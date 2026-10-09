@@ -1,0 +1,2 @@
+comtypes
+customtkinter==5.2.2

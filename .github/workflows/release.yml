@@ -1,0 +1,39 @@
+# v ile başlayan bir etiket (ör. v1.0.1) gönderildiğinde exe'yi Windows'ta derleyip
+# GitHub Releases'a yükler. Uygulama açılışta buradan yeni sürümü görür.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Etiket ile version.py uyumlu mu
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $v = (Select-String -Path cagri/version.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
+          if ($tag -ne $v) { throw "Etiket ($tag) ile cagri/version.py ($v) ayni degil" }
+
+      - name: Paketler
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Derle
+        run: python build.py
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CagriDoldur.exe
+          generate_release_notes: true

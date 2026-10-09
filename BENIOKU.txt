@@ -1,0 +1,48 @@
+ÇAĞRI DOLDUR v1.1  -  © 2026 EYK · All rights reserved
+
+KURULUM (bir kere)
+1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
+2. exe_yap.bat'a çift tıkla. 1-2 dakika sonra dist klasöründe CagriDoldur.exe oluşur.
+3. CagriDoldur.exe'yi istediğin yere koy (ör. Masaüstü). Artık sadece bunu açacaksın.
+   Ayarların (Gemini anahtarı vb.) eski sürümden otomatik taşınır; taşınmazsa ⚙ Ayarlar'dan tekrar gir.
+   Ayarlar artık şurada durur: %APPDATA%\CagriDoldur\ayarlar.json  (güncellemelerde silinmez)
+
+KULLANIM
+- "Çağrıyı Tamamla" ekranını aç, notunu yaz, Ctrl+Enter (veya butona bas).
+- ⚙ Ayarlar: tema, pencere üstte kalsın, varsayılan metinler, güncelleme kontrolü (şifresiz).
+- ⚙ Ayarlar > 🔒 API ve yönetici ayarları: yapay zekâ servisi, anahtarlar, hız, güncelleme kaynağı.
+  İlk girişte yetkili şifresi belirlenir, sonra her girişte sorulur (doğru girilince 5 dk tekrar sormaz).
+  Şifre unutulursa: %APPDATA%\CagriDoldur\ayarlar.json silinir, ayarlar sıfırlanır.
+- API anahtarları diskte Windows şifrelemesiyle (DPAPI) saklanır.
+- Kopyala-yapıştır seçilirse ekranda yazı kutusu yerine "Panodan yapıştır ve doldur" butonu çıkar.
+
+HIZ
+- "Hızlı" mod Flash-Lite kullanır, en çabuk cevap verir. "Dengeli" daha iyi yorumlar.
+- Her doldurmadan sonra altta AI ve ekran süreleri yazar; yavaşlık olursa bu sürelerle bildir.
+
+ONLINE GÜNCELLEME (GitHub ile)
+- Kod bir GitHub reposunda durur. Yeni sürüm çıkarmak için:
+  1) cagri/version.py içindeki VERSION'u artır (ör. 1.0.1)
+  2) değişiklikleri gönder ve aynı numarayla etiket at:  git tag v1.0.1  &&  git push --tags
+  3) GitHub exe'yi kendisi derleyip Releases'a koyar.
+- Uygulama açılışta bunu görür, üstte "Yeni sürüm hazır" bandı çıkar, "Güncelle"ye basınca
+  kendini indirip yeniden açılır.
+- Ayarlar > Güncelleme kaynağı kutusuna repo adını yaz (ör. kullaniciadi/cagri-doldur).
+
+SÜRÜM GEÇMİŞİ
+v1.1  Daha küçük exe (Pillow, requests, pywinauto/pywin32 çıkarıldı), şifreli API ayarları,
+      Ayarlar'ın ikinci kez açılmaması hatası düzeltildi, anahtarlar şifreli saklanıyor.
+v1.0  Yeni arayüz, temalar, logo, exe, online güncelleme altyapısı, hızlandırma.
+
+GELİŞTİRİCİ NOTU (klasör yapısı)
+main.py              giriş noktası
+cagri/version.py     sürüm numarası
+cagri/prompt.py      form alanları, AI kuralları ve örnek çağrılar (AI'nın üslubu buradan)
+cagri/ai.py          Gemini / Claude bağlantısı
+cagri/net.py         hafif HTTP katmanı (bağlantı havuzu, sistem proxy)
+cagri/guvenlik.py    yetkili şifresi ve anahtar şifreleme
+cagri/filler.py      çağrı ekranını bulma ve doldurma
+cagri/themes.py      temalar (yeni tema = yeni sözlük)
+cagri/ui.py          ana pencere ve ayarlar
+cagri/updater.py     online güncelleme
+build.py             exe derleme ayarları
