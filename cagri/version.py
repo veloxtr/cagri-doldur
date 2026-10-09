@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Uygulama sürümü. Yeni sürüm çıkarırken sadece burayı değiştir, sonra aynı numarayla etiket at (ör. v1.0.1)."""
+"""Uygulama sürümü. Yeni sürüm için sadece burayı artırıp main'e gönder; GitHub exe'yi derleyip yayınlar."""
 
 VERSION = "1.1.0"
 APP_NAME = "Çağrı Doldur"

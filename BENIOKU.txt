@@ -21,13 +21,12 @@ HIZ
 - Her doldurmadan sonra altta AI ve ekran süreleri yazar; yavaşlık olursa bu sürelerle bildir.
 
 ONLINE GÜNCELLEME (GitHub ile)
-- Kod bir GitHub reposunda durur. Yeni sürüm çıkarmak için:
-  1) cagri/version.py içindeki VERSION'u artır (ör. 1.0.1)
-  2) değişiklikleri gönder ve aynı numarayla etiket at:  git tag v1.0.1  &&  git push --tags
-  3) GitHub exe'yi kendisi derleyip Releases'a koyar.
+- Kod: https://github.com/veloxtr/cagri-doldur
+- Yeni sürüm çıkarmak için cagri/version.py içindeki VERSION'u artırıp main'e göndermek yeterli.
+  GitHub exe'yi kendisi derler ve "vX.Y.Z" olarak Releases'a koyar.
 - Uygulama açılışta bunu görür, üstte "Yeni sürüm hazır" bandı çıkar, "Güncelle"ye basınca
   kendini indirip yeniden açılır.
-- Ayarlar > Güncelleme kaynağı kutusuna repo adını yaz (ör. kullaniciadi/cagri-doldur).
+- Ayarlar > Güncelleme kaynağı kutusuna repo adını yaz (veloxtr/cagri-doldur).
 
 SÜRÜM GEÇMİŞİ
 v1.1  Daha küçük exe (Pillow, requests, pywinauto/pywin32 çıkarıldı), şifreli API ayarları,

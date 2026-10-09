@@ -20,7 +20,7 @@ VARSAYILAN = {
     "pencere_basligi": "Çağrıyı Tamamla",
     "varsayilan_ucret": "Ücret talep edilmedi. Müşterinin sözleşmesi bulunduğu için işlem sözleşme kapsamında ücretsiz yapıldı.",
     "varsayilan_kayit": "Hayır",
-    "guncelleme_repo": "",              # GitHub "kullanici/repo"
+    "guncelleme_repo": "veloxtr/cagri-doldur",  # GitHub "kullanici/repo"
     "yetkili_sifre": None,              # PBKDF2 özeti; şifrenin kendisi saklanmaz
 }
 

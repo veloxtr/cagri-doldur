@@ -1,10 +1,14 @@
-# v ile başlayan bir etiket (ör. v1.0.1) gönderildiğinde exe'yi Windows'ta derleyip
-# GitHub Releases'a yükler. Uygulama açılışta buradan yeni sürümü görür.
+# cagri/version.py değişip main'e gönderildiğinde exe'yi Windows'ta derler ve
+# "vX.Y.Z" adıyla GitHub Releases'a yükler. Uygulama açılışta buradan yeni sürümü görür.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths:
+      - "cagri/version.py"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,12 +23,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Etiket ile version.py uyumlu mu
+      - name: Sürümü oku
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}".TrimStart("v")
           $v = (Select-String -Path cagri/version.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
-          if ($tag -ne $v) { throw "Etiket ($tag) ile cagri/version.py ($v) ayni degil" }
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Sürüm: $v"
 
       - name: Paketler
         run: pip install -r requirements.txt pyinstaller
@@ -32,8 +36,16 @@ jobs:
       - name: Derle
         run: python build.py
 
+      - name: Boyut
+        shell: pwsh
+        run: Write-Host ("Exe boyutu: {0:N1} MB" -f ((Get-Item dist/CagriDoldur.exe).Length / 1MB))
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          name: Çağrı Doldur v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           files: dist/CagriDoldur.exe
           generate_release_notes: true
+          make_latest: true
