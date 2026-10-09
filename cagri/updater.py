@@ -2,8 +2,8 @@
 """Online güncelleme: GitHub Releases'tan son sürümü kontrol eder, exe'yi indirip kendini değiştirir.
 
 Yöntem: Windows çalışan bir exe'nin YENİDEN ADLANDIRILMASINA izin verir. Bu yüzden
-  CagriDoldur.exe      -> CagriDoldur.exe.eski   (çalışan dosya kenara alınır)
-  CagriDoldur.exe.yeni -> CagriDoldur.exe        (yeni sürüm yerine konur)
+  BilnexAssist.exe      -> BilnexAssist.exe.eski   (çalışan dosya kenara alınır)
+  BilnexAssist.exe.yeni -> BilnexAssist.exe        (yeni sürüm yerine konur)
 yapılır, yeni exe başlatılır ve bu süreç kapanır. Harici betik (PowerShell vb.) kullanılmaz;
 antivirüslerin engellemesine takılmaz. '.eski' dosya bir sonraki açılışta silinir.
 """

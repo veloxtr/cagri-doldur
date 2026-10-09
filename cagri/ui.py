@@ -10,7 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from . import ai, config, filler, gecmis, guvenlik, paths, themes, ucret, updater
-from .version import APP_NAME, TELIF, VERSION, kisa_surum
+from .version import APP_NAME, ARAC_ADI, TELIF, VERSION, kisa_surum
 
 FONT = "Segoe UI"
 IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
@@ -378,7 +378,7 @@ class App:
         else:
             metin = SERVIS_ADLARI.get(s, "")
         bugun = gecmis.bugun_sayisi()
-        return metin + (f" · Bugün {bugun} çağrı" if bugun else "")
+        return f"{ARAC_ADI} · {metin}" + (f" · Bugün {bugun} çağrı" if bugun else "")
 
     # ------------------------------------------------------------ yardımcılar
     def _not_al(self):
@@ -868,7 +868,7 @@ class GuncellemePenceresi(_Pencere):
     SARMA = 360
 
     def __init__(self, app, info, bagimsiz=False):
-        super().__init__(app, "Çağrı Doldur · Güncelleme", "440x320", kaydir=False, bagimsiz=bagimsiz)
+        super().__init__(app, f"{APP_NAME} · Güncelleme", "440x320", kaydir=False, bagimsiz=bagimsiz)
         self.info = info
         self.bagimsiz = bagimsiz
         self.w.protocol("WM_DELETE_WINDOW", self.sonra)

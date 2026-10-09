@@ -210,7 +210,7 @@ def doldur(baslik, values):
     if win is None:
         raise DoldurmaHatasi(
             "'Çağrıyı Tamamla' penceresi bulunamadı.\n"
-            "Ekranın açık olduğundan emin ol. Açıksa Çağrı Doldur'u sağ tık > "
+            "Ekranın açık olduğundan emin ol. Açıksa Bilnex Assist'i sağ tık > "
             "'Yönetici olarak çalıştır' ile aç.")
     edits = _kutulari_bul(uia, win)
     if len(edits) < len(FIELDS):

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Çağrı Doldur - giriş noktası."""
+"""Bilnex Assist - giriş noktası."""
 import sys
 import time
 
@@ -10,7 +10,7 @@ sys.coinit_flags = 2  # COM (ekran otomasyonu): tek thread (STA), tkinter ile uy
 def main():
     try:
         import ctypes
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("EYK.CagriDoldur")  # görev çubuğunda kendi ikonu
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("EYK.BilnexAssist")  # görev çubuğunda kendi ikonu
     except Exception:
         pass
     from cagri.ui import App

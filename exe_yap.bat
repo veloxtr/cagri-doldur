@@ -19,13 +19,13 @@ if errorlevel 1 (
 )
 echo Exe derleniyor, 1-2 dakika surebilir...
 %PY% build.py
-if not exist "dist\CagriDoldur.exe" (
+if not exist "dist\BilnexAssist.exe" (
   echo Derleme basarisiz. Yukaridaki hatayi Claude'a gonder.
   pause
   exit /b
 )
 echo.
-echo Hazir: dist\CagriDoldur.exe
+echo Hazir: dist\BilnexAssist.exe
 echo Bu dosyayi istedigin yere (orn. Masaustu) kopyalayip kullanabilirsin.
 explorer dist
 pause

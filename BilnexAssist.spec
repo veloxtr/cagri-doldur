@@ -30,7 +30,7 @@ def gerekli(hedef):
 
 once = len(a.datas)
 a.datas = [x for x in a.datas if gerekli(x[0])]
-print(f"[CagriDoldur] data files: {once} -> {len(a.datas)}")  # konsol Türkçe karakter basamayabilir
+print(f"[BilnexAssist] data files: {once} -> {len(a.datas)}")  # konsol Türkçe karakter basamayabilir
 
 pyz = PYZ(a.pure)
 
@@ -40,7 +40,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="CagriDoldur",
+    name="BilnexAssist",
     debug=False,
     strip=False,
     upx=False,

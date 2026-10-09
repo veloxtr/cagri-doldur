@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Uygulama sürümü. Yeni sürüm için sadece burayı artırıp main'e gönder; GitHub exe'yi derleyip yayınlar."""
 
-VERSION = "1.4.1"
-APP_NAME = "Çağrı Doldur"
+VERSION = "1.5.0"
+APP_NAME = "Bilnex Assist"
+ARAC_ADI = "Çağrı Doldur"  # Bilnex Assist içindeki ilk araç
 APP_ID = "CagriDoldur"
 YAPIMCI = "EYK"
 TELIF = "© 2026 EYK · All rights reserved"

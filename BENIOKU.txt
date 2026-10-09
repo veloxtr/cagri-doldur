@@ -1,9 +1,9 @@
-ÇAĞRI DOLDUR v1.4.1  -  © 2026 EYK · All rights reserved
+BILNEX ASSIST v1.5.0 (araçlar: Çağrı Doldur)  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
-2. exe_yap.bat'a çift tıkla. 1-2 dakika sonra dist klasöründe CagriDoldur.exe oluşur.
-3. CagriDoldur.exe'yi istediğin yere koy (ör. Masaüstü). Artık sadece bunu açacaksın.
+2. exe_yap.bat'a çift tıkla. 1-2 dakika sonra dist klasöründe BilnexAssist.exe oluşur.
+3. BilnexAssist.exe'yi istediğin yere koy (ör. Masaüstü). Artık sadece bunu açacaksın.
    Ayarların (Gemini anahtarı vb.) eski sürümden otomatik taşınır; taşınmazsa ⚙ Ayarlar'dan tekrar gir.
    Ayarlar artık şurada durur: %APPDATA%\CagriDoldur\ayarlar.json  (güncellemelerde silinmez)
 
@@ -28,6 +28,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.5.0 Yeni ad: Bilnex Assist (Çağrı Doldur ilk araç), yeni BA logosu, exe adı BilnexAssist.exe.
 v1.4.1 Yeni ücret seçimi (ücretli tutar, yıllık yenilemeli, sözleşmesiz destek, bayi), Durum kaldırıldı.
 v1.4.0 Hızlı seçimler (ücret/durum), gizlilik filtresi, geçmiş penceresi, günlük sayaç.
 v1.3.3 Klavye kısayolları: Ctrl+Backspace/Delete kelime siler, Ctrl+A, Ctrl+Z, Ctrl+Y.
@@ -55,5 +56,5 @@ cagri/gecmis.py      doldurma geçmişi (%APPDATA%\CagriDoldur\gecmis.json)
 cagri/themes.py      temalar (yeni tema = yeni sözlük)
 cagri/ui.py          ana pencere ve ayarlar
 cagri/updater.py     online güncelleme
-build.py             exe derleme (tarif: CagriDoldur.spec)
+build.py             exe derleme (tarif: BilnexAssist.spec)
 SURUM_NOTLARI.md     yayınlanan sürümün notları (güncelleme penceresinde görünür)
