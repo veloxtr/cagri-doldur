@@ -38,7 +38,8 @@ jobs:
 
       - name: Boyut
         shell: pwsh
-        run: Write-Host ("Exe boyutu: {0:N1} MB" -f ((Get-Item dist/CagriDoldur.exe).Length / 1MB))
+        run: |
+          Write-Host ("Exe boyutu: {0:N1} MB" -f ((Get-Item dist/CagriDoldur.exe).Length / 1MB))
 
       - name: Release
         uses: softprops/action-gh-release@v2
