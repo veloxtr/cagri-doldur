@@ -30,7 +30,7 @@ def gerekli(hedef):
 
 once = len(a.datas)
 a.datas = [x for x in a.datas if gerekli(x[0])]
-print(f"[CagriDoldur] veri dosyası: {once} -> {len(a.datas)}")
+print(f"[CagriDoldur] data files: {once} -> {len(a.datas)}")  # konsol Türkçe karakter basamayabilir
 
 pyz = PYZ(a.pure)
 
