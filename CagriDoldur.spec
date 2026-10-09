@@ -34,22 +34,9 @@ print(f"[CagriDoldur] data files: {once} -> {len(a.datas)}")  # konsol Türkçe 
 
 pyz = PYZ(a.pure)
 
-splash = Splash(
-    "assets/splash.png",
-    binaries=a.binaries,
-    datas=a.datas,
-    text_pos=(16, 218),
-    text_size=9,
-    text_color="#8B91A3",
-    text_default=f"v{SURUM}",
-    always_on_top=True,
-)
-
 exe = EXE(
     pyz,
     a.scripts,
-    splash,
-    splash.binaries,
     a.binaries,
     a.datas,
     [],
