@@ -1,5 +1,5 @@
-# cagri/version.py değişip main'e gönderildiğinde exe'yi Windows'ta derler ve
-# "vX.Y.Z" adıyla GitHub Releases'a yükler. Uygulama açılışta buradan yeni sürümü görür.
+# cagri/version.py değişip main'e gönderildiğinde: exe'yi Windows'ta derler, gerçek bir Windows'ta
+# açılışını ve "güncelle -> yeniden aç" akışını test eder, testler geçerse "vX.Y.Z" olarak yayınlar.
 name: Release
 
 on:
@@ -36,10 +36,54 @@ jobs:
       - name: Derle
         run: python build.py
 
-      - name: Boyut
+      - name: Açılış ve güncelleme testi
         shell: pwsh
         run: |
-          Write-Host ("Exe boyutu: {0:N1} MB" -f ((Get-Item dist/CagriDoldur.exe).Length / 1MB))
+          function Bekle($yol, $sn) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            while ($sw.Elapsed.TotalSeconds -lt $sn) {
+              if (Test-Path $yol) {
+                try { $j = Get-Content $yol -Raw | ConvertFrom-Json; if ($j) { return @($j, $sw.Elapsed.TotalSeconds) } } catch {}
+              }
+              Start-Sleep -Milliseconds 100
+            }
+            return $null
+          }
+          $satirlar = @()
+          for ($i = 1; $i -le 3; $i++) {
+            $out = Join-Path $env:RUNNER_TEMP "acilis$i.json"
+            $env:CAGRI_SELFTEST = $out
+            Start-Process -FilePath "dist\CagriDoldur.exe"
+            $r = Bekle $out 120
+            if (-not $r) { throw "Exe $i. denemede açılmadı" }
+            $j = $r[0]
+            if (-not $j.otomasyon) { throw "Ekran otomasyonu başlatılamadı" }
+            $satirlar += ("| {0} | {1:N1} sn | {2} |" -f $i, $r[1], $(if ($j.otomasyon_uretildi) { "çalışırken üretildi" } else { "hazır" }))
+            Start-Sleep -Seconds 2
+          }
+
+          $T = Join-Path $env:RUNNER_TEMP "guncelleme_testi"
+          New-Item -ItemType Directory -Path $T | Out-Null
+          Copy-Item dist\CagriDoldur.exe "$T\CagriDoldur.exe"
+          Copy-Item dist\CagriDoldur.exe "$T\kaynak.exe"
+          $out = Join-Path $T "sonuc.json"
+          $env:CAGRI_SELFTEST = $out
+          $env:CAGRI_UPDATE_TEST = "$T\kaynak.exe"
+          Start-Process -FilePath "$T\CagriDoldur.exe"
+          $r = Bekle $out 120
+          if (-not $r -or -not $r[0].guncellendi) { throw "Güncelle -> yeniden aç testi başarısız" }
+          if (-not (Test-Path "$T\CagriDoldur.exe")) { throw "Güncelleme sonrası exe yerinde değil" }
+          Remove-Item Env:CAGRI_UPDATE_TEST
+
+          $mb = (Get-Item dist\CagriDoldur.exe).Length / 1MB
+          $md = (Get-Content SURUM_NOTLARI.md -Raw).Trim()
+          $md += "`n`n<!-- test -->`n`n**Otomatik test (GitHub Windows sunucusu)**`n`n"
+          $md += ("Exe boyutu: {0:N1} MB`n`n" -f $mb)
+          $md += "| Deneme | Çift tıktan pencere açılana kadar | Ekran otomasyonu |`n|---|---|---|`n"
+          $md += ($satirlar -join "`n")
+          $md += ("`n`nGüncelle → yeniden aç testi: başarılı ({0:N1} sn)`n" -f $r[1])
+          Set-Content -Path release_notes.md -Value $md -Encoding utf8
+          Get-Content release_notes.md
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -48,5 +92,5 @@ jobs:
           name: Çağrı Doldur v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           files: dist/CagriDoldur.exe
-          generate_release_notes: true
+          body_path: release_notes.md
           make_latest: true

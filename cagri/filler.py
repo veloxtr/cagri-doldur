@@ -22,6 +22,7 @@ _SCOPE_DESCENDANTS = 4
 
 _uia = None
 _UIA = None
+URETILDI = False  # arayüz tanımları exe'de hazır gelmeyip çalışırken üretildiyse True (yavaş)
 
 
 class DoldurmaHatasi(Exception):
@@ -30,12 +31,13 @@ class DoldurmaHatasi(Exception):
 
 def _otomasyon():
     """IUIAutomation nesnesi (ilk çağrıda oluşturulur)."""
-    global _uia, _UIA
+    global _uia, _UIA, URETILDI
     if _uia is None:
         import comtypes.client
         try:
             from comtypes.gen import UIAutomationClient as UIA
         except ImportError:
+            URETILDI = True
             comtypes.client.GetModule("UIAutomationCore.dll")
             from comtypes.gen import UIAutomationClient as UIA
         _UIA = UIA

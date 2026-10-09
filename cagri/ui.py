@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Ana pencere ve ayarlar penceresi."""
+import json
+import os
 import threading
 import time
 import tkinter as tk
@@ -31,7 +33,9 @@ def _ikon_ver(pencere):
 
 
 class App:
-    def __init__(self):
+    def __init__(self, guncellendi_eski=None, baslangic=None):
+        self.baslangic = baslangic or time.perf_counter()
+        self.guncellendi_eski = guncellendi_eski
         self.cfg = config.yukle()
         self.guncelleme = None
         self.mesgul = False
@@ -206,9 +210,35 @@ class App:
 
     # ------------------------------------------------------------ açılış
     def _acilis_isleri(self):
+        pencere_sn = time.perf_counter() - self.baslangic
         filler.hazirla()  # ekran otomasyonunu önceden kur: ilk doldurma hızlanır
+        if os.environ.get("CAGRI_SELFTEST"):
+            self._oz_test(pencere_sn)
+            return
         threading.Thread(target=ai.isit, args=(self.cfg,), daemon=True).start()
-        self.guncelleme_kontrol(sessiz=True)
+        if not updater.eskileri_temizle():
+            self.root.after(8000, updater.eskileri_temizle)  # eski exe hâlâ kilitliyse biraz sonra
+        if self.guncellendi_eski is not None:
+            self.durum_yaz(f"Güncelleme tamamlandı: {kisa_surum()} kullanıyorsun.", "ok")
+        else:
+            self.guncelleme_kontrol(sessiz=True)
+
+    def _oz_test(self, pencere_sn):
+        """GitHub'daki otomatik derlemede exe'nin açıldığını, süresini ve güncelleme akışını doğrular."""
+        if os.environ.get("CAGRI_UPDATE_TEST") and self.guncellendi_eski is None:
+            # Güncelleme testi: kendini 'yeni sürümle' değiştirip yeniden başlat; yeni süreç sonucu yazar.
+            if updater.uygula({"url": "test", "version": "test"}, None, VERSION):
+                self.root.after(100, self.root.destroy)
+            return
+        sonuc = {"surum": VERSION, "pencere_sn": round(pencere_sn, 2),
+                 "guncellendi": self.guncellendi_eski is not None,
+                 "otomasyon": filler._uia is not None, "otomasyon_uretildi": filler.URETILDI,
+                 "toplam_sn": round(time.perf_counter() - self.baslangic, 2)}
+        try:
+            with open(os.environ["CAGRI_SELFTEST"], "w", encoding="utf-8") as f:
+                json.dump(sonuc, f)
+        finally:
+            self.root.after(100, self.root.destroy)
 
     def guncelleme_kontrol(self, sessiz=False, bitince=None):
         repo = self.cfg.get("guncelleme_repo")
@@ -617,14 +647,14 @@ class GuncellemePenceresi(_Pencere):
 
         def is_():
             try:
-                kapat = updater.uygula(self.info, ilerleme)
+                kapat = updater.uygula(self.info, ilerleme, VERSION)
             except Exception as e:
                 msg = str(e)
                 app.root.after(0, lambda: self._hata(msg))
                 return
             if kapat:
-                app.root.after(0, lambda: (self.durum.configure(text="Yeni sürüm açılıyor…"),
-                                           app.root.after(400, app.root.destroy)))
+                app.root.after(0, lambda: (self.cubuk.set(1), self.durum.configure(text="Tamamlandı. Yeni sürüm açılıyor…"),
+                                           app.root.after(700, app.root.destroy)))
             else:
                 app.root.after(0, self.w.destroy)
 
