@@ -1,4 +1,4 @@
-ÇAĞRI DOLDUR v1.3.1  -  © 2026 EYK · All rights reserved
+ÇAĞRI DOLDUR v1.3.2  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -28,6 +28,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.3.2 Açılışta önce güncelleme sorusu, tam sürüm numarası, sade güncelleme penceresi.
 v1.3.1 Açılış ekranı kaldırıldı.
 v1.3  Güncelleme sonrası otomatik yeniden açılma (PowerShell yerine yeniden adlandırma),
       gereksiz Tcl dosyaları çıkarılarak hızlı açılış, GitHub'da otomatik açılış testi.

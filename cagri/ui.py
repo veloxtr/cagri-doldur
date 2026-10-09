@@ -50,7 +50,26 @@ class App:
         self._logo = self._logo_yukle()
 
         self.kur()
+        self._gosterildi = True
+        self._guncelleme_soruluyor = False
+        if (not os.environ.get("CAGRI_SELFTEST") and guncellendi_eski is None
+                and self.cfg.get("guncelleme_repo")):
+            # Önce güncelleme var mı bak: varsa sadece "güncellensin mi?" penceresi gelir.
+            self.root.withdraw()
+            self._gosterildi = False
+            self.guncelleme_kontrol(sessiz=True)
+            self.root.after(3500, self._ana_goster)  # sunucu geç cevap verirse beklemeden aç
         self.root.after(300, self._acilis_isleri)
+
+    def _ana_goster(self, zorla=False):
+        if self._gosterildi or (self._guncelleme_soruluyor and not zorla):
+            return
+        self._gosterildi = True
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+        if self.note is not None:
+            self.root.after(50, self.note.focus_set)
 
     # ------------------------------------------------------------ kurulum
     @property
@@ -85,7 +104,7 @@ class App:
         ctk.CTkLabel(satir, text=f" {kisa_surum()} ", font=_f(11, True), fg_color=t["chip"],
                      text_color=t["chip_text"], corner_radius=8, height=20).pack(side="left", padx=(8, 0), pady=(3, 0))
         if self.guncelleme:
-            ctk.CTkButton(satir, text="⚠ Kullandığınız sürüm güncel değil", font=_f(11, True), height=20,
+            ctk.CTkButton(satir, text="⚠ Güncel değil", font=_f(11, True), height=20,
                           corner_radius=8, fg_color=t["warn"], hover_color=t["accent_hover"], text_color="#1A1300",
                           width=10, command=self.guncelleme_sor).pack(side="left", padx=(6, 0), pady=(3, 0))
         ctk.CTkLabel(baslik, text=self._servis_etiketi(), font=_f(11), text_color=t["sub"],
@@ -220,8 +239,6 @@ class App:
             self.root.after(8000, updater.eskileri_temizle)  # eski exe hâlâ kilitliyse biraz sonra
         if self.guncellendi_eski is not None:
             self.durum_yaz(f"Güncelleme tamamlandı: {kisa_surum()} kullanıyorsun.", "ok")
-        else:
-            self.guncelleme_kontrol(sessiz=True)
 
     def _oz_test(self, pencere_sn):
         """GitHub'daki otomatik derlemede exe'nin açıldığını, süresini ve güncelleme akışını doğrular."""
@@ -262,8 +279,14 @@ class App:
         if yeni:
             self.guncelleme = info
             self.kur()
-        if info and ((sessiz and yeni) or bitince):
+        if info and sessiz and yeni and not self._gosterildi:
+            # Açılış: ana pencere gizliyken sadece güncelleme sorusu gösterilir.
+            self._guncelleme_soruluyor = True
+            self.guncelleme_penceresi = GuncellemePenceresi(self, info, bagimsiz=True)
+        elif info and ((sessiz and yeni) or bitince):
             self.root.after(400, self.guncelleme_sor)  # kullanıcıya "güncellensin mi?" diye sor
+        if sessiz and not info:
+            self._ana_goster()
         if bitince:
             bitince(mesaj)
 
@@ -368,14 +391,23 @@ class _Pencere:
 
     SARMA = 400
 
-    def __init__(self, app, baslik, boyut, ebeveyn=None, kaydir=True):
+    def __init__(self, app, baslik, boyut, ebeveyn=None, kaydir=True, bagimsiz=False):
         self.app = app
         self.t = t = app.t
         w = self.w = ctk.CTkToplevel(ebeveyn or app.root)
         w.title(baslik)
-        w.geometry(boyut)
+        if bagimsiz:
+            # Ana pencere gizliyken tek başına, ekranın ortasında açılır.
+            gen, yuk = (int(x) for x in boyut.split("x"))
+            olcek = ctk.ScalingTracker.get_window_scaling(w) if hasattr(ctk, "ScalingTracker") else 1.0
+            x = max(0, (w.winfo_screenwidth() - int(gen * olcek)) // 2)
+            y = max(0, (w.winfo_screenheight() - int(yuk * olcek)) // 3)
+            w.geometry(f"{boyut}+{x}+{y}")
+        else:
+            w.geometry(boyut)
         w.configure(fg_color=t["bg"])
-        w.transient(ebeveyn or app.root)
+        if not bagimsiz:
+            w.transient(ebeveyn or app.root)
         w.attributes("-topmost", True)
         _ikon_ver(w)
         w.after(120, w.focus_force)
@@ -610,29 +642,39 @@ class GuncellemePenceresi(_Pencere):
 
     SARMA = 360
 
-    def __init__(self, app, info):
-        super().__init__(app, "Güncelleme", "420x300", kaydir=False)
+    def __init__(self, app, info, bagimsiz=False):
+        super().__init__(app, "Çağrı Doldur · Güncelleme", "440x320", kaydir=False, bagimsiz=bagimsiz)
         self.info = info
+        self.bagimsiz = bagimsiz
+        self.w.protocol("WM_DELETE_WINDOW", self.sonra)
         t = self.t
         ctk.CTkLabel(self.alan, text="Yeni sürüm hazır", font=_f(16, True), text_color=t["text"]).pack(anchor="w", padx=6)
         ctk.CTkLabel(self.alan, text=f"Sunucuda v{info['version']} var, sen {kisa_surum()} kullanıyorsun.\n"
                                      "Şimdi güncellensin mi?", font=_f(12), text_color=t["text"],
                      justify="left").pack(anchor="w", padx=6, pady=(6, 4))
-        notlar = (info.get("notes") or "").strip()
+        notlar = _notlari_sadelestir(info.get("notes") or "")
         if notlar:
-            self.aciklama(notlar[:280] + ("…" if len(notlar) > 280 else ""))
+            self.aciklama(notlar[:300] + ("…" if len(notlar) > 300 else ""))
         self.aciklama("Ayarların, şifren ve API anahtarların korunur. Uygulama kapanıp yeni sürümle açılır.")
         self.cubuk = ctk.CTkProgressBar(self.alan, progress_color=t["accent"], fg_color=t["input"], height=8)
         self.durum = ctk.CTkLabel(self.alan, text="", font=_f(11), text_color=t["sub"])
 
         alt = ctk.CTkFrame(self.w, fg_color="transparent")
         alt.pack(fill="x", padx=16, pady=12)
-        self.sonra_btn = self.ikincil_buton(alt, "Sonra", self.w.destroy, width=110, height=40)
+        self.sonra_btn = self.ikincil_buton(alt, "Sonra", self.sonra, width=110, height=40)
         self.sonra_btn.pack(side="left")
         self.evet_btn = ctk.CTkButton(alt, text="Şimdi güncelle", height=40, corner_radius=12, font=_f(14, True),
                                       fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"],
                                       command=self.baslat)
         self.evet_btn.pack(side="right", fill="x", expand=True, padx=(10, 0))
+
+    def sonra(self):
+        if str(self.sonra_btn.cget("state")) == "disabled":
+            return  # indirme sürerken kapatılmasın
+        self.w.destroy()
+        if self.bagimsiz:
+            self.app._guncelleme_soruluyor = False
+            self.app._ana_goster(zorla=True)
 
     def baslat(self):
         app = self.app
@@ -656,7 +698,7 @@ class GuncellemePenceresi(_Pencere):
                 app.root.after(0, lambda: (self.cubuk.set(1), self.durum.configure(text="Tamamlandı. Yeni sürüm açılıyor…"),
                                            app.root.after(700, app.root.destroy)))
             else:
-                app.root.after(0, self.w.destroy)
+                app.root.after(0, lambda: (self.sonra_btn.configure(state="normal"), self.sonra()))
 
         threading.Thread(target=is_, daemon=True).start()
 
@@ -666,3 +708,16 @@ class GuncellemePenceresi(_Pencere):
         self.durum.configure(text=f"Güncelleme olmadı: {msg}", text_color=self.t["err"])
         self.evet_btn.configure(state="normal", text="Tekrar dene")
         self.sonra_btn.configure(state="normal")
+
+
+def _notlari_sadelestir(metin):
+    """Sürüm notlarındaki Markdown işaretlerini (**, -, #) okunur metne çevirir."""
+    satirlar = []
+    for satir in metin.replace("\r", "").split("\n"):
+        satir = satir.strip().replace("**", "").lstrip("#").strip()
+        if not satir:
+            continue
+        if satir.startswith(("- ", "* ")):
+            satir = "• " + satir[2:]
+        satirlar.append(satir)
+    return "\n".join(satirlar)
