@@ -5,7 +5,7 @@ import re
 import threading
 import time
 
-from . import net
+from . import gizlilik, net
 from .prompt import FIELDS, system_prompt
 
 GEMINI_MODELLERI = {
@@ -127,9 +127,15 @@ def _anthropic(cfg, notu):
     return "".join(b.get("text", "") for b in json.loads(metin).get("content", []) if b.get("type") == "text")
 
 
-def yorumla(cfg, notu):
-    """(alanlar, süre_sn) döndürür."""
+def yorumla(cfg, notu, ek_bilgi=None):
+    """(alanlar, süre_sn) döndürür. ek_bilgi: hızlı seçimlerden gelen satırlar.
+    Gizlilik filtresi açıksa VKN/telefon/e-posta/IBAN AI'ya gitmeden maskelenir, cevapta geri konur."""
     t0 = time.perf_counter()
+    esleme = {}
+    if cfg.get("gizlilik", True):
+        notu, esleme = gizlilik.maskele(notu)
+    if ek_bilgi:
+        notu = notu.rstrip() + "\n\nEk bilgi:\n" + "\n".join(f"- {s}" for s in ek_bilgi)
     try:
         text = _anthropic(cfg, notu) if cfg.get("saglayici") == "anthropic" else _gemini(cfg, notu)
     except TimeoutError:
@@ -139,7 +145,7 @@ def yorumla(cfg, notu):
     vals = _json_cikar(text)
     if not vals or not vals.get("cozum"):
         raise AIHatasi("AI yanıtı anlaşılamadı:\n" + (text or "")[:300])
-    return vals, time.perf_counter() - t0
+    return gizlilik.geri_koy(vals, esleme), time.perf_counter() - t0
 
 
 def isit(cfg):

@@ -16,6 +16,7 @@ _CONTROL_TYPE_PROP = 30003
 _EDIT = 50004
 _DOCUMENT = 50030
 _WINDOW = 50032
+_TEXT = 50020
 _VALUE_PATTERN = 10002
 _SCOPE_CHILDREN = 2
 _SCOPE_DESCENDANTS = 4
@@ -158,6 +159,24 @@ def _kutulari_bul(uia, win):
     return edits
 
 
+_CAGRI_NO = re.compile(r"\b[A-ZÇĞİÖŞÜ]{2,6}-\d{4}-\d{3,}\b")
+
+
+def _cagri_no_oku(uia, win):
+    """Pencerede görünen 'Çağrı No' değerini (ör. DSK-2026-0195787) bulur; yoksa boş döner."""
+    try:
+        m = _CAGRI_NO.search(win.CurrentName or "")
+        if m:
+            return m.group(0)
+        for e in _hepsi(win.FindAll(_SCOPE_DESCENDANTS, uia.CreatePropertyCondition(_CONTROL_TYPE_PROP, _TEXT))):
+            m = _CAGRI_NO.search(e.CurrentName or "")
+            if m:
+                return m.group(0)
+    except Exception:
+        pass
+    return ""
+
+
 def _yaz(edit, metin):
     desen = edit.GetCurrentPattern(_VALUE_PATTERN)
     if not desen:
@@ -182,6 +201,7 @@ def _teshis_yaz(win, edits):
 
 
 def doldur(baslik, values):
+    """Alanları yazar; ekranda okunabildiyse Çağrı No'yu döndürür."""
     try:
         uia = _otomasyon()
     except Exception as e:
@@ -208,3 +228,4 @@ def doldur(baslik, values):
         edits[0].SetFocus()  # son kutunun da kaydedilmesi için odağı değiştir
     except Exception:
         pass
+    return _cagri_no_oku(uia, win)

@@ -155,6 +155,8 @@ Personel, kapattığı destek çağrısı hakkında kısa, dağınık ve yazım 
 Kurallar:
 - Edilgen ve geçmiş zaman kullan ("kontrol edildi", "güncelleme yapıldı", "müşteri bilgilendirildi"). Samimi hitapları ("kanka" vb.) metne alma.
 - Nottaki yazım hatalarını düzelt ve dağınık ifadeleri anlamına göre yorumla (ör. "done olmadığı için" = "hata tekrar oluşmadığı için"). Ürün adlarını doğru yaz: Bilnex, eBilnex, Mobilnex, EDM, B2B, TÜRMOB, GİB, CRM, e-Fatura, e-İrsaliye. Kişi adlarını "Ayşe Hanım", "Mehmet Bey" şeklinde yaz.
+- Notta [VKN-1], [TEL-1], [EPOSTA-1], [IBAN-1], [TCKN-1] gibi köşeli parantezli yer tutucular olabilir; bunları AYNEN koru, değiştirme ve açıklama ekleme.
+- Notun sonunda "Ek bilgi:" satırları varsa (ücret, durum) bunlar personelin seçimidir; ilgili alanları buna göre yaz, notla çelişirse Ek bilgi'yi esas al.
 - Notta olmayan bilgi UYDURMA. Notta açıkça yazmayan ama mantıken çıkan bilgiyi (ör. bir kontrolün yapıldığı) makul ölçüde yazabilirsin.
 - Her alan en az bir tam cümle olsun ve nokta ile bitsin ("kayit" alanı hariç).
 - "kok_neden": neden belliyse "Kök neden tespit edildi: ..." diye yaz; belli değilse "Kök neden tespit edilemedi." ile başla ve kısa açıkla. Teknik sorun yoksa (bilgi talebi vb.) "Teknik bir sorun bulunmuyor." ile başla.

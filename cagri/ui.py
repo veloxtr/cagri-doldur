@@ -9,13 +9,26 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-from . import ai, config, filler, guvenlik, paths, themes, updater
+from . import ai, config, filler, gecmis, guvenlik, paths, themes, updater
 from .version import APP_NAME, TELIF, VERSION, kisa_surum
 
 FONT = "Segoe UI"
 IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
          "Örn: vkn 10 hane uyarısı veriyordu, gümrük carisi boştu, oluşturup seçtim, "
          "gönderim yapıldı müşteri onay verdi")
+
+# Hızlı seçimler: görünen ad -> AI'ya giden ek bilgi (Otomatik = AI nottan karar verir)
+UCRET_SECIMLERI = {
+    "Otomatik": None,
+    "Sözleşmeli": "Ücret: Müşterinin sözleşmesi var; işlem sözleşme kapsamında ücretsiz yapıldı.",
+    "Ücretli": "Ücret: İşlem ücretli olarak yapıldı; notta tutar varsa belirt.",
+    "Bilgilendirme": "Ücret: Bilgilendirme amaçlı görüşme olduğu için ücretsiz.",
+}
+DURUM_SECIMLERI = {
+    "Otomatik": None,
+    "Çözüldü": "Durum: Sorun çözüldü.",
+    "Açık kaldı": "Durum: Sorun henüz çözülmedi; takip gerekiyor (sonraki adımı nottan çıkar).",
+}
 
 SERVIS_ADLARI = {"gemini": "Gemini", "anthropic": "Claude API", "kopyala": "Kopyala-yapıştır"}
 
@@ -137,8 +150,8 @@ class App:
 
         self.root = ctk.CTk()
         self.root.title(f"{APP_NAME} {kisa_surum()}")
-        self.root.geometry("540x470")
-        self.root.minsize(440, 400)
+        self.root.geometry("560x560")
+        self.root.minsize(470, 480)
         _ikon_ver(self.root)
         _kisayollari_kur(self.root)
         self._logo = self._logo_yukle()
@@ -206,6 +219,9 @@ class App:
         ctk.CTkButton(ust, text="⚙", width=38, height=38, corner_radius=10, font=_f(18),
                       fg_color=t["card"], hover_color=t["border"], text_color=t["text"],
                       border_width=1, border_color=t["border"], command=self.ayarlari_ac).pack(side="right")
+        ctk.CTkButton(ust, text="🕘", width=38, height=38, corner_radius=10, font=_f(16),
+                      fg_color=t["card"], hover_color=t["border"], text_color=t["text"],
+                      border_width=1, border_color=t["border"], command=self.gecmisi_ac).pack(side="right", padx=(0, 6))
 
         # --- kart
         kart = ctk.CTkFrame(govde, fg_color=t["card"], corner_radius=16, border_width=1, border_color=t["border"])
@@ -241,6 +257,23 @@ class App:
             if self.not_metni:
                 self.note.insert("1.0", self.not_metni)
             self._ipucu_guncelle()
+
+            if not hasattr(self, "ucret_secim"):
+                self.ucret_secim = ctk.StringVar(value="Otomatik")
+                self.durum_secim = ctk.StringVar(value="Otomatik")
+            secim = ctk.CTkFrame(ic, fg_color="transparent")
+            secim.pack(fill="x", pady=(10, 0))
+            for satir_no, (etiket, degerler, degisken) in enumerate(
+                    (("Ücret", list(UCRET_SECIMLERI), self.ucret_secim),
+                     ("Durum", list(DURUM_SECIMLERI), self.durum_secim))):
+                ctk.CTkLabel(secim, text=etiket, font=_f(11, True), text_color=t["sub"], width=46,
+                             anchor="w").grid(row=satir_no, column=0, sticky="w", pady=2)
+                ctk.CTkSegmentedButton(secim, values=degerler, variable=degisken, font=_f(11), height=26,
+                                       fg_color=t["input"], selected_color=t["accent"],
+                                       selected_hover_color=t["accent_hover"], unselected_color=t["input"],
+                                       unselected_hover_color=t["border"], text_color=t["text"]
+                                       ).grid(row=satir_no, column=1, sticky="ew", pady=2)
+            secim.grid_columnconfigure(1, weight=1)
             btn_metni = "✦  AI yorumla ve doldur"
             komut = self.ai_ile_doldur
 
@@ -281,8 +314,11 @@ class App:
     def _servis_etiketi(self):
         s = self.cfg.get("saglayici")
         if s == "gemini":
-            return "Gemini · " + ("Hızlı" if self.cfg.get("gemini_hiz") == "hizli" else "Dengeli")
-        return SERVIS_ADLARI.get(s, "")
+            metin = "Gemini · " + ("Hızlı" if self.cfg.get("gemini_hiz") == "hizli" else "Dengeli")
+        else:
+            metin = SERVIS_ADLARI.get(s, "")
+        bugun = gecmis.bugun_sayisi()
+        return metin + (f" · Bugün {bugun} çağrı" if bugun else "")
 
     # ------------------------------------------------------------ yardımcılar
     def _not_al(self):
@@ -407,10 +443,13 @@ class App:
         self._mesgul(True)
         self.durum_yaz("AI yorumluyor…", "is")
         t0 = time.perf_counter()
+        secimler = {"ucret": self.ucret_secim.get(), "durum": self.durum_secim.get()}
+        ek = [x for x in (UCRET_SECIMLERI.get(secimler["ucret"]), DURUM_SECIMLERI.get(secimler["durum"])) if x]
+        self._son = {"not": notu, "secimler": secimler}
 
         def is_():
             try:
-                vals, sure = ai.yorumla(self.cfg, notu)
+                vals, sure = ai.yorumla(self.cfg, notu, ek)
                 self.root.after(0, lambda: self._ekrana(vals, sure, t0, temizle=True))
             except Exception as e:
                 msg = str(e)
@@ -430,6 +469,7 @@ class App:
             self.durum_yaz("Panoda doldurulacak blok yok. Önce Claude'daki bloğu kopyala.", "is")
             return
         self._mesgul(True)
+        self._son = {"not": "(Claude bloğundan)", "secimler": {}}
         self._ekrana(vals, None, time.perf_counter(), temizle=False)
 
     def _ekrana(self, vals, ai_sure, t0, temizle):
@@ -437,18 +477,38 @@ class App:
         self.root.update_idletasks()
         t1 = time.perf_counter()
         try:
-            filler.doldur(self.cfg["pencere_basligi"], vals)
+            cagri_no = filler.doldur(self.cfg["pencere_basligi"], vals)
         except Exception as e:
             self._mesgul(False)
             self.durum_yaz(str(e), "err")
             return
         ekran = time.perf_counter() - t1
         self._mesgul(False)
+        son = getattr(self, "_son", None) or {}
+        if temizle:
+            try:
+                gecmis.ekle(cagri_no, son.get("not", ""), vals, son.get("secimler"))
+            except Exception:
+                pass
         if temizle and self.note is not None:
             self.note.delete("1.0", "end")
             self._ipucu_guncelle()
+            self.ucret_secim.set("Otomatik")
+            self.durum_secim.set("Otomatik")
         sure = f"AI {ai_sure:.1f} sn · ekran {ekran:.1f} sn" if ai_sure is not None else f"{ekran:.1f} sn"
         self.durum_yaz(f"Dolduruldu ({sure}). Kontrol edip kapatabilirsin.", "ok")
+
+    def gecmisi_ac(self):
+        if self._acik_mi(getattr(self, "gecmis_penceresi", None)):
+            self.gecmis_penceresi.w.lift()
+            self.gecmis_penceresi.w.focus_force()
+            return
+        self.gecmis_penceresi = GecmisPenceresi(self)
+
+    def gecmisten_doldur(self, kayit):
+        self._son = {"not": kayit.get("not", ""), "secimler": kayit.get("secimler", {})}
+        self._mesgul(True)
+        self._ekrana(kayit.get("alanlar", {}), None, time.perf_counter(), temizle=False)
 
     # ------------------------------------------------------------ ayarlar
     def _acik_mi(self, pencere):
@@ -696,6 +756,11 @@ class YoneticiPenceresi(_Pencere):
         self.aciklama("Hızlı: Flash-Lite, en çabuk cevap. Dengeli: Flash, daha iyi yorum.")
         self.api_key = self.giris("Claude API anahtarı (varsa)", cfg["api_key"], gizli=True)
         self.aciklama("Anahtarlar bu bilgisayarda Windows şifrelemesiyle saklanır; dosya kopyalansa da okunamaz.")
+        self.gizlilik = ctk.BooleanVar(value=bool(cfg.get("gizlilik", True)))
+        ctk.CTkSwitch(self.alan, text="Gizlilik filtresi", variable=self.gizlilik, font=_f(12),
+                      text_color=self.t["text"], progress_color=self.t["accent"]).pack(anchor="w", padx=6, pady=(4, 2))
+        self.aciklama("VKN, TC kimlik no, telefon, e-posta ve IBAN yapay zekâya gönderilmeden maskelenir; "
+                      "forma gerçek değerleri yazılır.")
 
         self.bolum("Sistem")
         self.baslik = self.giris("Çağrı ekranının pencere başlığı", cfg["pencere_basligi"])
@@ -723,6 +788,7 @@ class YoneticiPenceresi(_Pencere):
         c["gemini_key"] = self.gemini_key.get().strip()
         c["gemini_hiz"] = "hizli" if self.hiz.get() == "Hızlı" else "dengeli"
         c["api_key"] = self.api_key.get().strip()
+        c["gizlilik"] = bool(self.gizlilik.get())
         c["pencere_basligi"] = self.baslik.get().strip() or "Çağrıyı Tamamla"
         c["guncelleme_repo"] = self.repo.get().strip()
         if y1:
@@ -815,3 +881,94 @@ def _notlari_sadelestir(metin):
             satir = "• " + satir[2:]
         satirlar.append(satir)
     return "\n".join(satirlar)
+
+
+class GecmisPenceresi(_Pencere):
+    """Doldurulan çağrıların listesi: ara, ayrıntıya bak, ekrana tekrar doldur, notu geri al."""
+
+    SARMA = 470
+
+    def __init__(self, app):
+        super().__init__(app, "Geçmiş", "540x620", kaydir=False)
+        t = self.t
+        self.liste = gecmis.yukle()
+        ust = ctk.CTkFrame(self.alan, fg_color="transparent")
+        ust.pack(fill="x", padx=6)
+        ctk.CTkLabel(ust, text="Geçmiş", font=_f(16, True), text_color=t["text"]).pack(side="left")
+        ctk.CTkLabel(ust, text=f"{len(self.liste)} kayıt · bugün {gecmis.bugun_sayisi(self.liste)}",
+                     font=_f(11), text_color=t["sub"]).pack(side="left", padx=10)
+        self.arama = ctk.CTkEntry(self.alan, placeholder_text="Ara: Çağrı No, müşteri, konu…", font=_f(12),
+                                  height=34, corner_radius=10, fg_color=t["input"], border_color=t["border"],
+                                  text_color=t["text"])
+        self.arama.pack(fill="x", padx=6, pady=(10, 6))
+        self.arama.bind("<KeyRelease>", lambda e: self.listele())
+        self.kutu = ctk.CTkScrollableFrame(self.alan, fg_color="transparent")
+        self.kutu.pack(fill="both", expand=True)
+        self.alt = ctk.CTkFrame(self.w, fg_color="transparent")
+        self.alt.pack(fill="x", padx=14, pady=10)
+        self.listele()
+
+    def _temizle(self):
+        for c in self.kutu.winfo_children():
+            c.destroy()
+        for c in self.alt.winfo_children():
+            c.destroy()
+
+    def listele(self):
+        self._temizle()
+        t = self.t
+        bulunan = gecmis.ara(self.liste, self.arama.get())
+        if not bulunan:
+            ctk.CTkLabel(self.kutu, text="Henüz kayıt yok." if not self.liste else "Eşleşen kayıt yok.",
+                         font=_f(12), text_color=t["sub"]).pack(pady=20)
+            return
+        for k in bulunan[:100]:
+            ozet = (k.get("alanlar") or {}).get("ozet") or k.get("not", "")
+            ozet = ozet if len(ozet) <= 110 else ozet[:107] + "…"
+            baslik = f"{k.get('cagri_no') or 'Çağrı No okunamadı'}   ·   {k.get('zaman', '')}"
+            kart = ctk.CTkFrame(self.kutu, fg_color=t["card"], corner_radius=10, border_width=1,
+                                border_color=t["border"])
+            kart.pack(fill="x", padx=2, pady=3)
+            l1 = ctk.CTkLabel(kart, text=baslik, font=_f(12, True), text_color=t["text"], anchor="w")
+            l1.pack(fill="x", padx=10, pady=(6, 0))
+            l2 = ctk.CTkLabel(kart, text=ozet, font=_f(11), text_color=t["sub"], anchor="w", justify="left",
+                              wraplength=450)
+            l2.pack(fill="x", padx=10, pady=(0, 6))
+            for w in (kart, l1, l2):
+                w.bind("<Button-1>", lambda e, kayit=k: self.ayrinti(kayit))
+                w.configure(cursor="hand2")
+
+    def ayrinti(self, k):
+        self._temizle()
+        t = self.t
+        ctk.CTkLabel(self.kutu, text=f"{k.get('cagri_no') or 'Çağrı No okunamadı'}  ·  {k.get('zaman', '')}",
+                     font=_f(13, True), text_color=t["text"], anchor="w").pack(fill="x", padx=4, pady=(0, 6))
+        bloklar = [("Not", k.get("not", ""))]
+        secim = k.get("secimler") or {}
+        if secim:
+            bloklar.append(("Seçimler", f"Ücret: {secim.get('ucret', '-')} · Durum: {secim.get('durum', '-')}"))
+        alanlar = k.get("alanlar") or {}
+        from .prompt import FIELDS
+        bloklar += [(etiket, alanlar.get(anahtar, "")) for anahtar, etiket in FIELDS]
+        for etiket, metin in bloklar:
+            ctk.CTkLabel(self.kutu, text=etiket, font=_f(11, True), text_color=t["accent"], anchor="w").pack(
+                fill="x", padx=4, pady=(6, 0))
+            ctk.CTkLabel(self.kutu, text=metin or "-", font=_f(12), text_color=t["text"], anchor="w",
+                         justify="left", wraplength=470).pack(fill="x", padx=4)
+
+        self.ikincil_buton(self.alt, "← Geri", self.listele, width=80, height=36).pack(side="left")
+        self.ikincil_buton(self.alt, "Notu kutuya al", lambda: self.notu_al(k), width=120,
+                           height=36).pack(side="left", padx=6)
+        ctk.CTkButton(self.alt, text="Ekrana tekrar doldur", height=36, corner_radius=10, font=_f(13, True),
+                      fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"],
+                      command=lambda: self.app.gecmisten_doldur(k)).pack(side="right", fill="x", expand=True)
+
+    def notu_al(self, k):
+        app = self.app
+        if app.note is None:
+            return
+        app.note.delete("1.0", "end")
+        app.note.insert("1.0", k.get("not", ""))
+        app._ipucu_guncelle()
+        app.root.lift()
+        app.note.focus_set()

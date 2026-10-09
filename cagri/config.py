@@ -21,6 +21,7 @@ VARSAYILAN = {
     "varsayilan_ucret": "Ücret talep edilmedi. Müşterinin sözleşmesi bulunduğu için işlem sözleşme kapsamında ücretsiz yapıldı.",
     "varsayilan_kayit": "Hayır",
     "guncelleme_repo": "veloxtr/cagri-doldur",  # GitHub "kullanici/repo"
+    "gizlilik": True,                   # VKN/telefon/e-posta/IBAN AI'ya maskelenerek gider
     "yetkili_sifre": None,              # PBKDF2 özeti; şifrenin kendisi saklanmaz
 }
 
