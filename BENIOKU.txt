@@ -1,4 +1,4 @@
-ÇAĞRI DOLDUR v1.4.0  -  © 2026 EYK · All rights reserved
+ÇAĞRI DOLDUR v1.4.1  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -28,6 +28,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.4.1 Yeni ücret seçimi (ücretli tutar, yıllık yenilemeli, sözleşmesiz destek, bayi), Durum kaldırıldı.
 v1.4.0 Hızlı seçimler (ücret/durum), gizlilik filtresi, geçmiş penceresi, günlük sayaç.
 v1.3.3 Klavye kısayolları: Ctrl+Backspace/Delete kelime siler, Ctrl+A, Ctrl+Z, Ctrl+Y.
 v1.3.2 Açılışta önce güncelleme sorusu, tam sürüm numarası, sade güncelleme penceresi.
@@ -49,6 +50,7 @@ cagri/net.py         hafif HTTP katmanı (bağlantı havuzu, sistem proxy)
 cagri/guvenlik.py    yetkili şifresi ve anahtar şifreleme
 cagri/filler.py      çağrı ekranını bulma, doldurma, Çağrı No okuma
 cagri/gizlilik.py    VKN/telefon/e-posta/IBAN maskeleme
+cagri/ucret.py       ücret seçenekleri ve forma yazılan sabit ücret cümleleri
 cagri/gecmis.py      doldurma geçmişi (%APPDATA%\CagriDoldur\gecmis.json)
 cagri/themes.py      temalar (yeni tema = yeni sözlük)
 cagri/ui.py          ana pencere ve ayarlar

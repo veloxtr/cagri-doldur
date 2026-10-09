@@ -1,5 +1,6 @@
 **Yenilikler**
-- Hızlı seçimler: not kutusunun altından Ücret (Sözleşmeli / Ücretli / Bilgilendirme) ve Durum (Çözüldü / Açık kaldı) seçilebiliyor.
-- Gizlilik filtresi: VKN, TC kimlik no, telefon, e-posta ve IBAN yapay zekâya gönderilmeden maskeleniyor; forma gerçek değerler yazılıyor.
-- Geçmiş (🕘): doldurulan çağrılar Çağrı No ile saklanıyor; arama, ayrıntı, ekrana tekrar doldurma ve notu geri alma.
-- Başlıkta günlük sayaç: "Bugün N çağrı".
+- Ücret seçimi yenilendi: Sözleşmeli, Yıllık yenilemeli, Sözleşmesiz destek, Bayi destek, Bilgilendirme, Ücretli.
+- Ücretli seçilince Tek seferlik / Yıllık ve tutar soruluyor ("3000+kdv" → "3.000 TL + KDV").
+- Sözleşmesiz destekte konu seçiliyor: E-belge gönderimi, Portal / şifre, Diğer.
+- Ücret alanı artık her zaman seçime göre sabit ve net cümleyle yazılıyor.
+- Otomatik ve Durum seçimleri kaldırıldı.

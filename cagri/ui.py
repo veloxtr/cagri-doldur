@@ -9,26 +9,13 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-from . import ai, config, filler, gecmis, guvenlik, paths, themes, updater
+from . import ai, config, filler, gecmis, guvenlik, paths, themes, ucret, updater
 from .version import APP_NAME, TELIF, VERSION, kisa_surum
 
 FONT = "Segoe UI"
 IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
          "Örn: vkn 10 hane uyarısı veriyordu, gümrük carisi boştu, oluşturup seçtim, "
          "gönderim yapıldı müşteri onay verdi")
-
-# Hızlı seçimler: görünen ad -> AI'ya giden ek bilgi (Otomatik = AI nottan karar verir)
-UCRET_SECIMLERI = {
-    "Otomatik": None,
-    "Sözleşmeli": "Ücret: Müşterinin sözleşmesi var; işlem sözleşme kapsamında ücretsiz yapıldı.",
-    "Ücretli": "Ücret: İşlem ücretli olarak yapıldı; notta tutar varsa belirt.",
-    "Bilgilendirme": "Ücret: Bilgilendirme amaçlı görüşme olduğu için ücretsiz.",
-}
-DURUM_SECIMLERI = {
-    "Otomatik": None,
-    "Çözüldü": "Durum: Sorun çözüldü.",
-    "Açık kaldı": "Durum: Sorun henüz çözülmedi; takip gerekiyor (sonraki adımı nottan çıkar).",
-}
 
 SERVIS_ADLARI = {"gemini": "Gemini", "anthropic": "Claude API", "kopyala": "Kopyala-yapıştır"}
 
@@ -150,8 +137,8 @@ class App:
 
         self.root = ctk.CTk()
         self.root.title(f"{APP_NAME} {kisa_surum()}")
-        self.root.geometry("560x560")
-        self.root.minsize(470, 480)
+        self.root.geometry("580x600")
+        self.root.minsize(500, 520)
         _ikon_ver(self.root)
         _kisayollari_kur(self.root)
         self._logo = self._logo_yukle()
@@ -258,22 +245,7 @@ class App:
                 self.note.insert("1.0", self.not_metni)
             self._ipucu_guncelle()
 
-            if not hasattr(self, "ucret_secim"):
-                self.ucret_secim = ctk.StringVar(value="Otomatik")
-                self.durum_secim = ctk.StringVar(value="Otomatik")
-            secim = ctk.CTkFrame(ic, fg_color="transparent")
-            secim.pack(fill="x", pady=(10, 0))
-            for satir_no, (etiket, degerler, degisken) in enumerate(
-                    (("Ücret", list(UCRET_SECIMLERI), self.ucret_secim),
-                     ("Durum", list(DURUM_SECIMLERI), self.durum_secim))):
-                ctk.CTkLabel(secim, text=etiket, font=_f(11, True), text_color=t["sub"], width=46,
-                             anchor="w").grid(row=satir_no, column=0, sticky="w", pady=2)
-                ctk.CTkSegmentedButton(secim, values=degerler, variable=degisken, font=_f(11), height=26,
-                                       fg_color=t["input"], selected_color=t["accent"],
-                                       selected_hover_color=t["accent_hover"], unselected_color=t["input"],
-                                       unselected_hover_color=t["border"], text_color=t["text"]
-                                       ).grid(row=satir_no, column=1, sticky="ew", pady=2)
-            secim.grid_columnconfigure(1, weight=1)
+            self._ucret_alani(ic)
             btn_metni = "✦  AI yorumla ve doldur"
             komut = self.ai_ile_doldur
 
@@ -298,6 +270,94 @@ class App:
 
         if self.note is not None:
             self.root.after(50, self.note.focus_set)
+
+    # ------------------------------------------------------------ ücret seçimi
+    def _ucret_durumu_hazirla(self):
+        if not hasattr(self, "ucret_secim"):
+            self.ucret_secim = ctk.StringVar(value=ucret.VARSAYILAN)
+            self.ucretli_tur = ctk.StringVar(value=ucret.UCRETLI_TURLER[0])
+            self.tutar = ctk.StringVar(value="")
+            self.sozlesmesiz_konu = ctk.StringVar(value=ucret.SOZLESMESIZ_KONULAR[0])
+
+    def _ucret_sifirla(self):
+        self.ucret_secim.set(ucret.VARSAYILAN)
+        self.ucretli_tur.set(ucret.UCRETLI_TURLER[0])
+        self.tutar.set("")
+        self.sozlesmesiz_konu.set(ucret.SOZLESMESIZ_KONULAR[0])
+        self._ucret_ciz()
+
+    def _ucret_alani(self, ebeveyn):
+        """Not kutusunun altındaki ücret seçimi: 3x2 buton + seçime göre açılan ayrıntı satırı."""
+        self._ucret_durumu_hazirla()
+        t = self.t
+        alan = ctk.CTkFrame(ebeveyn, fg_color="transparent")
+        alan.pack(fill="x", pady=(10, 0))
+        ust = ctk.CTkFrame(alan, fg_color="transparent")
+        ust.pack(fill="x")
+        ctk.CTkLabel(ust, text="Ücret", font=_f(11, True), text_color=t["sub"], width=46, anchor="nw").pack(
+            side="left", anchor="n", pady=(4, 0))
+        izgara = ctk.CTkFrame(ust, fg_color="transparent")
+        izgara.pack(side="left", fill="x", expand=True)
+        self._ucret_butonlari = {}
+        for i, ad in enumerate(ucret.SECENEKLER):
+            b = ctk.CTkButton(izgara, text=ad, height=28, corner_radius=8, font=_f(11), border_width=1,
+                              command=lambda a=ad: (self.ucret_secim.set(a), self._ucret_ciz()))
+            b.grid(row=i // 3, column=i % 3, sticky="ew", padx=2, pady=2)
+            self._ucret_butonlari[ad] = b
+        for c in range(3):
+            izgara.grid_columnconfigure(c, weight=1, uniform="u")
+
+        self._ucret_detay = ctk.CTkFrame(alan, fg_color="transparent")
+        seg = dict(font=_f(11), height=26, fg_color=t["input"], selected_color=t["accent"],
+                   selected_hover_color=t["accent_hover"], unselected_color=t["input"],
+                   unselected_hover_color=t["border"], text_color=t["text"])
+        # Ücretli: tür + tutar
+        self._detay_ucretli = ctk.CTkFrame(self._ucret_detay, fg_color="transparent")
+        ctk.CTkSegmentedButton(self._detay_ucretli, values=ucret.UCRETLI_TURLER, variable=self.ucretli_tur,
+                               width=170, **seg).pack(side="left")
+        self._tutar_kutusu = ctk.CTkEntry(self._detay_ucretli, textvariable=self.tutar, height=28, corner_radius=8,
+                                          font=_f(12), placeholder_text="Tutar, ör. 3000+kdv",
+                                          fg_color=t["input"], border_color=t["border"], text_color=t["text"])
+        self._tutar_kutusu.pack(side="left", fill="x", expand=True, padx=(8, 0))
+        self._tutar_kutusu.bind("<Return>", lambda e: self.ai_ile_doldur())
+        # Sözleşmesiz destek: konu
+        self._detay_konu = ctk.CTkFrame(self._ucret_detay, fg_color="transparent")
+        ctk.CTkSegmentedButton(self._detay_konu, values=ucret.SOZLESMESIZ_KONULAR, variable=self.sozlesmesiz_konu,
+                               **seg).pack(fill="x")
+        self._ucret_ciz()
+
+    def _ucret_ciz(self):
+        if not hasattr(self, "_ucret_butonlari"):
+            return
+        t = self.t
+        secili = self.ucret_secim.get()
+        for ad, b in self._ucret_butonlari.items():
+            try:
+                if ad == secili:
+                    b.configure(fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"],
+                                border_color=t["accent"])
+                else:
+                    b.configure(fg_color=t["input"], hover_color=t["border"], text_color=t["text"],
+                                border_color=t["border"])
+            except tk.TclError:
+                return
+        for f in (self._detay_ucretli, self._detay_konu):
+            f.pack_forget()
+        self._ucret_detay.pack_forget()
+        if secili == "Ücretli":
+            self._ucret_detay.pack(fill="x", padx=(48, 2), pady=(4, 0))
+            self._detay_ucretli.pack(fill="x")
+            self.root.after(50, self._tutar_kutusu.focus_set)
+        elif secili == "Sözleşmesiz destek":
+            self._ucret_detay.pack(fill="x", padx=(48, 2), pady=(4, 0))
+            self._detay_konu.pack(fill="x")
+
+    def _ucret_bilgisi(self):
+        """(forma yazılacak metin, geçmiş özeti). Ücretli ama tutar yoksa UcretHatasi."""
+        s, tur, tutar, konu = (self.ucret_secim.get(), self.ucretli_tur.get(), self.tutar.get(),
+                               self.sozlesmesiz_konu.get())
+        return (ucret.metin(s, tur, tutar, konu, self.cfg.get("varsayilan_ucret")),
+                ucret.ozet(s, tur, tutar, konu))
 
     def _logo_yukle(self):
         """Logo, ekran ölçeğine en yakın boyuttan yüklenir (resim kütüphanesi gerekmez)."""
@@ -440,16 +500,22 @@ class App:
         if (s == "gemini" and not self.cfg.get("gemini_key")) or (s == "anthropic" and not self.cfg.get("api_key")):
             self.durum_yaz("API anahtarı girilmemiş: ⚙ Ayarlar > API ve yönetici ayarları.", "is")
             return
+        try:
+            ucret_metni, ucret_ozeti = self._ucret_bilgisi()
+        except ucret.UcretHatasi as e:
+            self.durum_yaz(str(e), "is")
+            self._tutar_kutusu.focus_set()
+            return
         self._mesgul(True)
         self.durum_yaz("AI yorumluyor…", "is")
         t0 = time.perf_counter()
-        secimler = {"ucret": self.ucret_secim.get(), "durum": self.durum_secim.get()}
-        ek = [x for x in (UCRET_SECIMLERI.get(secimler["ucret"]), DURUM_SECIMLERI.get(secimler["durum"])) if x]
-        self._son = {"not": notu, "secimler": secimler}
+        ek = [f"Ücret durumu: {ucret_ozeti}. Ücret alanına aynen şunu yaz: {ucret_metni}"]
+        self._son = {"not": notu, "secimler": {"ucret": ucret_ozeti}}
 
         def is_():
             try:
                 vals, sure = ai.yorumla(self.cfg, notu, ek)
+                vals["ucret"] = ucret_metni  # ücret alanı her zaman seçime göre sabit metin
                 self.root.after(0, lambda: self._ekrana(vals, sure, t0, temizle=True))
             except Exception as e:
                 msg = str(e)
@@ -493,8 +559,7 @@ class App:
         if temizle and self.note is not None:
             self.note.delete("1.0", "end")
             self._ipucu_guncelle()
-            self.ucret_secim.set("Otomatik")
-            self.durum_secim.set("Otomatik")
+            self._ucret_sifirla()
         sure = f"AI {ai_sure:.1f} sn · ekran {ekran:.1f} sn" if ai_sure is not None else f"{ekran:.1f} sn"
         self.durum_yaz(f"Dolduruldu ({sure}). Kontrol edip kapatabilirsin.", "ok")
 
@@ -946,7 +1011,7 @@ class GecmisPenceresi(_Pencere):
         bloklar = [("Not", k.get("not", ""))]
         secim = k.get("secimler") or {}
         if secim:
-            bloklar.append(("Seçimler", f"Ücret: {secim.get('ucret', '-')} · Durum: {secim.get('durum', '-')}"))
+            bloklar.append(("Ücret seçimi", secim.get("ucret", "-")))
         alanlar = k.get("alanlar") or {}
         from .prompt import FIELDS
         bloklar += [(etiket, alanlar.get(anahtar, "")) for anahtar, etiket in FIELDS]
