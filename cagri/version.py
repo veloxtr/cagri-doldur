@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Uygulama sürümü. Yeni sürüm için sadece burayı artırıp main'e gönder; GitHub exe'yi derleyip yayınlar."""
 
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 APP_NAME = "Bilnex Assist"
 ARAC_ADI = "Çağrı Doldur"  # Bilnex Assist içindeki ilk araç
 APP_ID = "CagriDoldur"

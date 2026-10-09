@@ -1,4 +1,4 @@
-BILNEX ASSIST v1.5.0 (araçlar: Çağrı Doldur)  -  © 2026 EYK · All rights reserved
+BILNEX ASSIST v1.5.1 (araçlar: Çağrı Doldur)  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -28,6 +28,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.5.1 Logo rengi #FF7F00.
 v1.5.0 Yeni ad: Bilnex Assist (Çağrı Doldur ilk araç), yeni BA logosu, exe adı BilnexAssist.exe.
 v1.4.1 Yeni ücret seçimi (ücretli tutar, yıllık yenilemeli, sözleşmesiz destek, bayi), Durum kaldırıldı.
 v1.4.0 Hızlı seçimler (ücret/durum), gizlilik filtresi, geçmiş penceresi, günlük sayaç.
