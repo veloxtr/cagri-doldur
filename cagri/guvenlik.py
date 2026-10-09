@@ -74,3 +74,45 @@ def ac(metin):
         return _dpapi(base64.b64decode(metin[6:]), True).decode("utf-8")
     except Exception:
         return ""  # başka bilgisayardan kopyalanmış: okunamaz
+
+
+# ---------------------------------------------------------------- parola ile şifreleme (taşınabilir)
+# Dışa aktarılan ayar dosyası için: DPAPI yerine parola tabanlı, bağımsız (AES gerektirmez) şema.
+# PBKDF2 ile anahtar türetilir, SHA-256 akış şifresiyle şifrelenir, HMAC-SHA256 ile bütünlük korunur.
+def _anahtar(parola, tuz):
+    return hashlib.pbkdf2_hmac("sha256", parola.encode("utf-8"), tuz, _TUR, dklen=64)
+
+
+def _akis_xor(veri, k):
+    out = bytearray(len(veri))
+    i = 0
+    sayac = 0
+    while i < len(veri):
+        blok = hashlib.sha256(k + sayac.to_bytes(8, "big")).digest()
+        for b in blok:
+            if i >= len(veri):
+                break
+            out[i] = veri[i] ^ b
+            i += 1
+        sayac += 1
+    return bytes(out)
+
+
+def parola_sifrele(metin, parola):
+    tuz = os.urandom(16)
+    k = _anahtar(parola, tuz)
+    sifre, mac = k[:32], k[32:]
+    ct = _akis_xor(metin.encode("utf-8"), sifre)
+    etiket = hmac.new(mac, tuz + ct, hashlib.sha256).hexdigest()
+    return {"v": 1, "tuz": tuz.hex(), "veri": base64.b64encode(ct).decode("ascii"), "mac": etiket}
+
+
+def parola_coz(blob, parola):
+    tuz = bytes.fromhex(blob["tuz"])
+    ct = base64.b64decode(blob["veri"])
+    k = _anahtar(parola, tuz)
+    sifre, mac = k[:32], k[32:]
+    beklenen = hmac.new(mac, tuz + ct, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(beklenen, blob.get("mac", "")):
+        raise ValueError("Şifre yanlış ya da dosya bozuk.")
+    return _akis_xor(ct, sifre).decode("utf-8")

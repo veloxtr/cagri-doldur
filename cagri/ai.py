@@ -154,3 +154,14 @@ def isit(cfg):
         net.isit("generativelanguage.googleapis.com")
     elif cfg.get("saglayici") == "anthropic":
         net.isit("api.anthropic.com")
+
+
+def baglanti_testi(cfg):
+    """Anahtarı gerçek küçük bir istekle dener. (ok, mesaj) döndürür."""
+    try:
+        vals, sure = yorumla(cfg, "baglanti testi")
+        return True, f"Bağlantı başarılı. Yanıt {sure:.1f} sn'de geldi."
+    except AIHatasi as e:
+        return False, str(e)
+    except Exception as e:
+        return False, f"Beklenmeyen hata: {e}"

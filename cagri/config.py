@@ -22,6 +22,7 @@ VARSAYILAN = {
     "varsayilan_kayit": "Hayır",
     "guncelleme_repo": "veloxtr/cagri-doldur",  # GitHub "kullanici/repo"
     "gizlilik": True,                   # VKN/telefon/e-posta/IBAN AI'ya maskelenerek gider
+    "acilista_sifre": False,            # açılışta yetkili şifresi sorulsun mu
     "yetkili_sifre": None,              # PBKDF2 özeti; şifrenin kendisi saklanmaz
 }
 
@@ -84,3 +85,32 @@ def kaydet(cfg):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(disk, f, ensure_ascii=False, indent=2)
     os.replace(tmp, AYAR_DOSYASI)
+
+
+# ---------------------------------------------------------------- dışa / içe aktarma (taşınabilir)
+AKTARILAN_ALANLAR = ("saglayici", "gemini_key", "gemini_hiz", "gemini_model", "api_key", "model",
+                     "tema", "her_zaman_ustte", "pencere_basligi", "varsayilan_ucret", "varsayilan_kayit",
+                     "guncelleme_repo", "gizlilik", "acilista_sifre", "yetkili_sifre")
+
+
+def disa_aktar(cfg, dosya, parola):
+    """Seçili ayarları parolayla şifreleyip dosyaya yazar."""
+    import json as _json
+    veri = {k: cfg.get(k) for k in AKTARILAN_ALANLAR}
+    blob = guvenlik.parola_sifrele(_json.dumps(veri, ensure_ascii=False), parola)
+    blob["uygulama"] = "BilnexAssist"
+    with open(dosya, "w", encoding="utf-8") as f:
+        _json.dump(blob, f)
+
+
+def ice_aktar(cfg, dosya, parola):
+    """Dosyadaki ayarları çözüp cfg'ye uygular ve kaydeder. Hatada istisna fırlatır."""
+    import json as _json
+    with open(dosya, "r", encoding="utf-8") as f:
+        blob = _json.load(f)
+    veri = _json.loads(guvenlik.parola_coz(blob, parola))
+    for k in AKTARILAN_ALANLAR:
+        if k in veri and veri[k] is not None:
+            cfg[k] = veri[k]
+    kaydet(cfg)
+    return cfg

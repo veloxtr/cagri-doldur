@@ -1,4 +1,4 @@
-BILNEX ASSIST v1.5.1 (araçlar: Çağrı Doldur)  -  © 2026 EYK · All rights reserved
+BILNEX ASSIST v1.6.0 (araçlar: Çağrı Doldur, Mesai Hak Edişi)  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -28,6 +28,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.6.0 Menü yapısı (araç çantası), Mesai Hak Edişi aracı, bağlantı testi, ayar dışa/içe aktarma, açılışta şifre.
 v1.5.1 Logo rengi #FF7F00.
 v1.5.0 Yeni ad: Bilnex Assist (Çağrı Doldur ilk araç), yeni BA logosu, exe adı BilnexAssist.exe.
 v1.4.1 Yeni ücret seçimi (ücretli tutar, yıllık yenilemeli, sözleşmesiz destek, bayi), Durum kaldırıldı.
@@ -53,6 +54,7 @@ cagri/guvenlik.py    yetkili şifresi ve anahtar şifreleme
 cagri/filler.py      çağrı ekranını bulma, doldurma, Çağrı No okuma
 cagri/gizlilik.py    VKN/telefon/e-posta/IBAN maskeleme
 cagri/ucret.py       ücret seçenekleri ve forma yazılan sabit ücret cümleleri
+cagri/mesai.py       mesai hak edişi hesabı (maaş/225, çarpanlar)
 cagri/gecmis.py      doldurma geçmişi (%APPDATA%\CagriDoldur\gecmis.json)
 cagri/themes.py      temalar (yeni tema = yeni sözlük)
 cagri/ui.py          ana pencere ve ayarlar

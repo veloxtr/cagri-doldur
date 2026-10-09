@@ -10,7 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 from . import ai, config, filler, gecmis, guvenlik, paths, themes, ucret, updater
-from .version import APP_NAME, ARAC_ADI, TELIF, VERSION, kisa_surum
+from .version import APP_NAME, TELIF, VERSION, kisa_surum
 
 FONT = "Segoe UI"
 IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
@@ -18,6 +18,13 @@ IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
          "gönderim yapıldı müşteri onay verdi")
 
 SERVIS_ADLARI = {"gemini": "Gemini", "anthropic": "Claude API", "kopyala": "Kopyala-yapıştır"}
+
+# Araç çantası: kategori -> [(anahtar, görünen ad)]. Yeni araç = yeni satır.
+ARACLAR = [
+    ("BSP Entegrasyon", [("cagri", "Çağrı Doldur")]),
+    ("Personel", [("mesai", "Mesai Hak Edişi")]),
+]
+_ARAC_ADLARI = {k: ad for _, liste in ARACLAR for k, ad in liste}
 
 
 def _f(size, bold=False):
@@ -134,11 +141,12 @@ class App:
         self.mesgul = False
         self.not_metni = ""
         self.ayar_penceresi = None
+        self.aktif_arac = "cagri"
 
         self.root = ctk.CTk()
         self.root.title(f"{APP_NAME} {kisa_surum()}")
-        self.root.geometry("580x600")
-        self.root.minsize(500, 520)
+        self.root.geometry("760x620")
+        self.root.minsize(680, 560)
         _ikon_ver(self.root)
         _kisayollari_kur(self.root)
         self._logo = self._logo_yukle()
@@ -146,14 +154,34 @@ class App:
         self.kur()
         self._gosterildi = True
         self._guncelleme_soruluyor = False
-        if (not os.environ.get("CAGRI_SELFTEST") and guncellendi_eski is None
+        kilitli = (not os.environ.get("CAGRI_SELFTEST") and guncellendi_eski is None
+                   and self.cfg.get("acilista_sifre") and self.cfg.get("yetkili_sifre"))
+        if kilitli:
+            self.root.withdraw()
+            self._gosterildi = False
+            self._acilis_kilidi()
+        else:
+            self._basla_normal()
+        self.root.after(300, self._acilis_isleri)
+
+    def _acilis_kilidi(self):
+        """Açılışta yetkili şifresi sorar; doğru girilince normal başlatma yapılır, kapatılırsa çıkılır."""
+        pencere = SifrePenceresi(self, self._basla_normal, self.root)
+        try:
+            pencere.w.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        except Exception:
+            pass
+
+    def _basla_normal(self):
+        if (not os.environ.get("CAGRI_SELFTEST") and self.guncellendi_eski is None
                 and self.cfg.get("guncelleme_repo")):
             # Önce güncelleme var mı bak: varsa sadece "güncellensin mi?" penceresi gelir.
             self.root.withdraw()
             self._gosterildi = False
             self.guncelleme_kontrol(sessiz=True)
             self.root.after(3500, self._ana_goster)  # sunucu geç cevap verirse beklemeden aç
-        self.root.after(300, self._acilis_isleri)
+        else:
+            self._ana_goster(zorla=True)
 
     def _ana_goster(self, zorla=False):
         if self._gosterildi or (self._guncelleme_soruluyor and not zorla):
@@ -171,9 +199,13 @@ class App:
         return themes.al(self.cfg.get("tema"))
 
     def kur(self):
-        """Arayüzü (yeniden) çizer. Tema değişince de çağrılır."""
-        if hasattr(self, "note") and self.note.winfo_exists():
-            self.not_metni = self._not_al()
+        """Kabuğu (başlık + sol menü + içerik) çizer. Tema/servis değişince de çağrılır."""
+        if getattr(self, "aktif_arac", None) == "cagri" and getattr(self, "note", None) is not None:
+            try:
+                if self.note.winfo_exists():
+                    self.not_metni = self._not_al()
+            except Exception:
+                pass
         for w in self.root.winfo_children():
             if not isinstance(w, ctk.CTkToplevel):
                 w.destroy()
@@ -182,12 +214,9 @@ class App:
         self.root.configure(fg_color=t["bg"])
         self.root.attributes("-topmost", bool(self.cfg.get("her_zaman_ustte", True)))
 
-        govde = ctk.CTkFrame(self.root, fg_color="transparent")
-        govde.pack(fill="both", expand=True, padx=18, pady=(14, 8))
-
-        # --- başlık
-        ust = ctk.CTkFrame(govde, fg_color="transparent")
-        ust.pack(fill="x")
+        # --- üst başlık (tüm araçlarda ortak)
+        ust = ctk.CTkFrame(self.root, fg_color="transparent")
+        ust.pack(fill="x", padx=16, pady=(12, 0))
         if self._logo:
             tk.Label(ust, image=self._logo, bd=0, highlightthickness=0, bg=t["bg"]).pack(side="left")
         baslik = ctk.CTkFrame(ust, fg_color="transparent")
@@ -198,21 +227,79 @@ class App:
         ctk.CTkLabel(satir, text=f" {kisa_surum()} ", font=_f(11, True), fg_color=t["chip"],
                      text_color=t["chip_text"], corner_radius=8, height=20).pack(side="left", padx=(8, 0), pady=(3, 0))
         if self.guncelleme:
-            ctk.CTkButton(satir, text="⚠ Güncel değil", font=_f(11, True), height=20,
-                          corner_radius=8, fg_color=t["warn"], hover_color=t["accent_hover"], text_color="#1A1300",
+            ctk.CTkButton(satir, text="⚠ Güncel değil", font=_f(11, True), height=20, corner_radius=8,
+                          fg_color=t["warn"], hover_color=t["accent_hover"], text_color="#1A1300",
                           width=10, command=self.guncelleme_sor).pack(side="left", padx=(6, 0), pady=(3, 0))
         ctk.CTkLabel(baslik, text=self._servis_etiketi(), font=_f(11), text_color=t["sub"],
                      height=14).pack(anchor="w")
-        ctk.CTkButton(ust, text="⚙", width=38, height=38, corner_radius=10, font=_f(18),
-                      fg_color=t["card"], hover_color=t["border"], text_color=t["text"],
-                      border_width=1, border_color=t["border"], command=self.ayarlari_ac).pack(side="right")
-        ctk.CTkButton(ust, text="🕘", width=38, height=38, corner_radius=10, font=_f(16),
-                      fg_color=t["card"], hover_color=t["border"], text_color=t["text"],
-                      border_width=1, border_color=t["border"], command=self.gecmisi_ac).pack(side="right", padx=(0, 6))
+        ctk.CTkButton(ust, text="⚙", width=38, height=38, corner_radius=10, font=_f(18), fg_color=t["card"],
+                      hover_color=t["border"], text_color=t["text"], border_width=1, border_color=t["border"],
+                      command=self.ayarlari_ac).pack(side="right")
+        ctk.CTkButton(ust, text="🕘", width=38, height=38, corner_radius=10, font=_f(16), fg_color=t["card"],
+                      hover_color=t["border"], text_color=t["text"], border_width=1, border_color=t["border"],
+                      command=self.gecmisi_ac).pack(side="right", padx=(0, 6))
 
-        # --- kart
+        ctk.CTkLabel(self.root, text=TELIF, font=_f(10), text_color=t["sub"]).pack(side="bottom", pady=(0, 8))
+
+        # --- gövde: sol menü + içerik
+        govde = ctk.CTkFrame(self.root, fg_color="transparent")
+        govde.pack(fill="both", expand=True, padx=16, pady=(12, 6))
+        self._nav_ciz(govde)
+        self.icerik = ctk.CTkFrame(govde, fg_color="transparent")
+        self.icerik.pack(side="left", fill="both", expand=True, padx=(12, 0))
+        self._icerik_ciz()
+
+    def _nav_ciz(self, govde):
+        t = self.t
+        ray = ctk.CTkFrame(govde, fg_color=t["card"], corner_radius=14, border_width=1, border_color=t["border"],
+                           width=168)
+        ray.pack(side="left", fill="y")
+        ray.pack_propagate(False)
+        self._nav_butonlari = {}
+        for kategori, araclar in ARACLAR:
+            ctk.CTkLabel(ray, text=kategori.upper(), font=_f(10, True), text_color=t["sub"], anchor="w").pack(
+                fill="x", padx=12, pady=(12, 2))
+            for anahtar, ad in araclar:
+                b = ctk.CTkButton(ray, text=ad, anchor="w", height=34, corner_radius=9, font=_f(12),
+                                  command=lambda a=anahtar: self._arac_sec(a))
+                b.pack(fill="x", padx=8, pady=2)
+                self._nav_butonlari[anahtar] = b
+        self._nav_vurgula()
+
+    def _nav_vurgula(self):
+        t = self.t
+        for anahtar, b in getattr(self, "_nav_butonlari", {}).items():
+            if anahtar == self.aktif_arac:
+                b.configure(fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"])
+            else:
+                b.configure(fg_color="transparent", hover_color=t["border"], text_color=t["text"])
+
+    def _arac_sec(self, anahtar):
+        if anahtar == self.aktif_arac:
+            return
+        if self.aktif_arac == "cagri" and getattr(self, "note", None) is not None:
+            try:
+                self.not_metni = self._not_al()
+            except Exception:
+                pass
+        self.aktif_arac = anahtar
+        self._nav_vurgula()
+        self._icerik_ciz()
+
+    def _icerik_ciz(self):
+        for w in self.icerik.winfo_children():
+            w.destroy()
+        self.note = None
+        if self.aktif_arac == "mesai":
+            self._sayfa_mesai(self.icerik)
+        else:
+            self._sayfa_cagri(self.icerik)
+
+    # ------------------------------------------------------------ Çağrı Doldur sayfası
+    def _sayfa_cagri(self, govde):
+        t = self.t
         kart = ctk.CTkFrame(govde, fg_color=t["card"], corner_radius=16, border_width=1, border_color=t["border"])
-        kart.pack(fill="both", expand=True, pady=(14, 0))
+        kart.pack(fill="both", expand=True)
         ic = ctk.CTkFrame(kart, fg_color="transparent")
         ic.pack(fill="both", expand=True, padx=14, pady=14)
 
@@ -230,8 +317,8 @@ class App:
         else:
             kutu = ctk.CTkFrame(ic, fg_color="transparent")
             kutu.pack(fill="both", expand=True)
-            self.note = ctk.CTkTextbox(kutu, wrap="word", undo=True, maxundo=-1, font=_f(13), fg_color=t["input"], text_color=t["text"],
-                                       border_width=1, border_color=t["border"], corner_radius=12)
+            self.note = ctk.CTkTextbox(kutu, wrap="word", undo=True, maxundo=-1, font=_f(13), fg_color=t["input"],
+                                       text_color=t["text"], border_width=1, border_color=t["border"], corner_radius=12)
             self.note.pack(fill="both", expand=True)
             self.ipucu = ctk.CTkLabel(kutu, text=IPUCU, font=_f(12), text_color=t["sub"], justify="left",
                                       wraplength=420, fg_color=t["input"], anchor="nw")
@@ -244,7 +331,6 @@ class App:
             if self.not_metni:
                 self.note.insert("1.0", self.not_metni)
             self._ipucu_guncelle()
-
             self._ucret_alani(ic)
             btn_metni = "✦  AI yorumla ve doldur"
             komut = self.ai_ile_doldur
@@ -254,22 +340,84 @@ class App:
                                  command=komut)
         self.btn.pack(fill="x", pady=(12, 0))
 
-        # --- durum
         durum = ctk.CTkFrame(govde, fg_color="transparent")
         durum.pack(fill="x", pady=(8, 0))
         self.nokta = ctk.CTkLabel(durum, text="●", font=_f(12), text_color=t["sub"], width=14)
         self.nokta.pack(side="left")
         self.durum = ctk.CTkLabel(durum, text="", font=_f(12), text_color=t["sub"], anchor="w", justify="left",
-                                  wraplength=460)
+                                  wraplength=420)
         self.durum.pack(side="left", fill="x", expand=True, padx=(4, 0))
         ctk.CTkLabel(durum, text="" if kopyala else "Ctrl + Enter", font=_f(11), text_color=t["sub"]).pack(side="right")
         self._durum_varsayilan()
-
-        # --- alt bilgi
-        ctk.CTkLabel(self.root, text=TELIF, font=_f(10), text_color=t["sub"]).pack(side="bottom", pady=(0, 8))
-
         if self.note is not None:
             self.root.after(50, self.note.focus_set)
+
+    # ------------------------------------------------------------ Mesai sayfası
+    def _sayfa_mesai(self, govde):
+        from . import mesai
+        t = self.t
+        if not hasattr(self, "mesai_maas"):
+            self.mesai_maas = ctk.StringVar(value="")
+            self.mesai_saat = {k: ctk.StringVar(value="") for k, _, _ in mesai.CARPANLAR}
+        kart = ctk.CTkScrollableFrame(govde, fg_color=t["card"], corner_radius=16, border_color=t["border"],
+                                      border_width=1)
+        kart.pack(fill="both", expand=True)
+        ctk.CTkLabel(kart, text="Mesai Hak Edişi", font=_f(16, True), text_color=t["text"]).pack(anchor="w", padx=4, pady=(2, 2))
+
+        uyari = ctk.CTkFrame(kart, fg_color=t["chip"], corner_radius=10)
+        uyari.pack(fill="x", padx=4, pady=(4, 10))
+        ctk.CTkLabel(uyari, text="⚠  " + mesai.UYARI, font=_f(11), text_color=t["chip_text"], justify="left",
+                     wraplength=380, anchor="w").pack(fill="x", padx=10, pady=8)
+
+        ctk.CTkLabel(kart, text="Aylık maaş", font=_f(12, True), text_color=t["text"], anchor="w").pack(fill="x", padx=4)
+        e = ctk.CTkEntry(kart, textvariable=self.mesai_maas, height=34, corner_radius=10, font=_f(13),
+                         placeholder_text="ör. 33.750", fg_color=t["input"], border_color=t["border"], text_color=t["text"])
+        e.pack(fill="x", padx=4, pady=(2, 2))
+        ctk.CTkLabel(kart, text=f"Saatlik ücret = maaş / {mesai.BOLEN}", font=_f(10), text_color=t["sub"],
+                     anchor="w").pack(fill="x", padx=4, pady=(0, 8))
+
+        for anahtar, ad, carpan in mesai.CARPANLAR:
+            satir = ctk.CTkFrame(kart, fg_color="transparent")
+            satir.pack(fill="x", padx=4, pady=3)
+            ctk.CTkLabel(satir, text=f"{ad}  (x{carpan:g})", font=_f(12), text_color=t["text"], anchor="w",
+                         width=200).pack(side="left")
+            ec = ctk.CTkEntry(satir, textvariable=self.mesai_saat[anahtar], height=32, corner_radius=9, font=_f(12),
+                              placeholder_text="saat", fg_color=t["input"], border_color=t["border"], text_color=t["text"])
+            ec.pack(side="left", fill="x", expand=True)
+            ec.bind("<Return>", lambda ev: self._mesai_hesapla())
+
+        ctk.CTkButton(kart, text="Hesapla", height=42, corner_radius=12, font=_f(14, True), fg_color=t["accent"],
+                      hover_color=t["accent_hover"], text_color=t["on_accent"], command=self._mesai_hesapla).pack(
+            fill="x", padx=4, pady=(10, 6))
+        self.mesai_sonuc = ctk.CTkFrame(kart, fg_color="transparent")
+        self.mesai_sonuc.pack(fill="x", padx=4)
+
+    def _mesai_hesapla(self):
+        from . import mesai
+        for w in self.mesai_sonuc.winfo_children():
+            w.destroy()
+        t = self.t
+        r = mesai.hesapla(self.mesai_maas.get(), {k: v.get() for k, v in self.mesai_saat.items()})
+        if not self.mesai_maas.get().strip():
+            ctk.CTkLabel(self.mesai_sonuc, text="Önce maaşı yaz.", font=_f(12), text_color=t["warn"]).pack(anchor="w")
+            return
+        ctk.CTkLabel(self.mesai_sonuc, text=f"Saatlik ücret: {mesai.tl(r['saatlik'])}", font=_f(12),
+                     text_color=t["sub"], anchor="w").pack(fill="x", pady=(2, 4))
+        for ad, saat, carpan, tutar in r["satirlar"]:
+            if saat:
+                sat = ctk.CTkFrame(self.mesai_sonuc, fg_color="transparent")
+                sat.pack(fill="x")
+                ctk.CTkLabel(sat, text=f"{ad}: {saat:g} saat × {carpan:g}", font=_f(12), text_color=t["text"],
+                             anchor="w").pack(side="left")
+                ctk.CTkLabel(sat, text=mesai.tl(tutar), font=_f(12), text_color=t["text"], anchor="e").pack(side="right")
+        ayr = ctk.CTkFrame(self.mesai_sonuc, fg_color=t["border"], height=1)
+        ayr.pack(fill="x", pady=6)
+        top = ctk.CTkFrame(self.mesai_sonuc, fg_color="transparent")
+        top.pack(fill="x")
+        ctk.CTkLabel(top, text=f"Toplam ({r['toplam_saat']:g} saat)", font=_f(13, True), text_color=t["text"],
+                     anchor="w").pack(side="left")
+        ctk.CTkLabel(top, text=mesai.tl(r["toplam"]), font=_f(14, True), text_color=t["accent"],
+                     anchor="e").pack(side="right")
 
     # ------------------------------------------------------------ ücret seçimi
     def _ucret_durumu_hazirla(self):
@@ -378,7 +526,7 @@ class App:
         else:
             metin = SERVIS_ADLARI.get(s, "")
         bugun = gecmis.bugun_sayisi()
-        return f"{ARAC_ADI} · {metin}" + (f" · Bugün {bugun} çağrı" if bugun else "")
+        return metin + (f" · Bugün {bugun} çağrı" if bugun else "")
 
     # ------------------------------------------------------------ yardımcılar
     def _not_al(self):
@@ -397,6 +545,12 @@ class App:
         return "break"
 
     def durum_yaz(self, metin, tur="bilgi"):
+        d = getattr(self, "durum", None)
+        try:
+            if d is None or not d.winfo_exists():
+                return  # başka araç sayfasındayız, durum çubuğu yok
+        except Exception:
+            return
         t = self.t
         renk = {"ok": t["ok"], "err": t["err"], "is": t["warn"]}.get(tur, t["sub"])
         self.nokta.configure(text_color=renk)
@@ -415,7 +569,11 @@ class App:
 
     def _mesgul(self, var):
         self.mesgul = var
-        self.btn.configure(state="disabled" if var else "normal")
+        try:
+            if self.btn.winfo_exists():
+                self.btn.configure(state="disabled" if var else "normal")
+        except Exception:
+            pass
 
     # ------------------------------------------------------------ açılış
     def _acilis_isleri(self):
@@ -708,12 +866,61 @@ class AyarPenceresi(_Pencere):
         self.kontrol_sonuc = ctk.CTkLabel(satir, text=f"Sürüm {kisa_surum()}", font=_f(11), text_color=t["sub"])
         self.kontrol_sonuc.pack(side="left", padx=10)
 
+        self.bolum("Güvenlik")
+        self.acilis = ctk.BooleanVar(value=bool(cfg.get("acilista_sifre", False)))
+        ctk.CTkSwitch(self.alan, text="Açılışta şifre sor", variable=self.acilis, font=_f(12),
+                      text_color=t["text"], progress_color=t["accent"]).pack(anchor="w", padx=6, pady=(0, 2))
+        self.aciklama("Uygulama her açıldığında yetkili şifresini ister.")
+
+        self.bolum("Yedekleme")
+        ysat = ctk.CTkFrame(self.alan, fg_color="transparent")
+        ysat.pack(fill="x", padx=6, pady=(0, 2))
+        self.ikincil_buton(ysat, "Ayarları dışa aktar", self.disa_aktar, width=150).pack(side="left")
+        self.ikincil_buton(ysat, "İçe aktar", self.ice_aktar, width=100).pack(side="left", padx=6)
+        self.yedek_sonuc = ctk.CTkLabel(self.alan, text="", font=_f(11), text_color=t["sub"], anchor="w",
+                                        wraplength=self.SARMA, justify="left")
+        self.yedek_sonuc.pack(fill="x", padx=6)
+        self.aciklama("Anahtar ve ayarları şifreli bir dosyaya kaydeder; başka bilgisayarda içe aktarırsın.")
+
         self.bolum("Yetkili")
         kilit = "🔒  API ve yönetici ayarları"
         self.ikincil_buton(self.alan, kilit, self.yonetici_ac, height=40, anchor="w").pack(fill="x", padx=6, pady=(2, 4))
         self.aciklama("Yapay zekâ servisi, API anahtarları, güncelleme kaynağı. Yetkili şifresi ister.")
 
         self.ana_buton("Kaydet", self.kaydet)
+
+    def disa_aktar(self):
+        from tkinter import filedialog, simpledialog
+        yol = filedialog.asksaveasfilename(parent=self.w, title="Ayarları dışa aktar",
+                                           defaultextension=".baz", initialfile="bilnex-assist-ayar.baz",
+                                           filetypes=[("Bilnex Assist yedek", "*.baz")])
+        if not yol:
+            return
+        parola = simpledialog.askstring("Dışa aktar", "Yedek için bir şifre belirle:", show="•", parent=self.w)
+        if not parola:
+            return
+        try:
+            config.disa_aktar(self.app.cfg, yol, parola)
+            self.yedek_sonuc.configure(text="Dışa aktarıldı. Dosyayı ve şifreyi sakla.", text_color=self.t["ok"])
+        except Exception as e:
+            self.yedek_sonuc.configure(text=f"Olmadı: {e}", text_color=self.t["err"])
+
+    def ice_aktar(self):
+        from tkinter import filedialog, simpledialog
+        yol = filedialog.askopenfilename(parent=self.w, title="Ayarları içe aktar",
+                                         filetypes=[("Bilnex Assist yedek", "*.baz"), ("Tüm dosyalar", "*.*")])
+        if not yol:
+            return
+        parola = simpledialog.askstring("İçe aktar", "Yedek şifresini gir:", show="•", parent=self.w)
+        if not parola:
+            return
+        try:
+            config.ice_aktar(self.app.cfg, yol, parola)
+        except Exception as e:
+            self.yedek_sonuc.configure(text=f"Olmadı: {e}", text_color=self.t["err"])
+            return
+        self.w.destroy()
+        self.app.ayarlar_kaydedildi("Ayarlar içe aktarıldı.")
 
     def kontrol_et(self):
         self.kontrol_sonuc.configure(text="Kontrol ediliyor…")
@@ -741,6 +948,16 @@ class AyarPenceresi(_Pencere):
         c["her_zaman_ustte"] = bool(self.ustte.get())
         c["varsayilan_ucret"] = self.ucret.get().strip() or config.VARSAYILAN["varsayilan_ucret"]
         c["varsayilan_kayit"] = self.kayit.get().strip() or "Hayır"
+        if self.acilis.get() and not c.get("yetkili_sifre"):
+            # Açılış kilidi için önce bir şifre belirlensin.
+            def tamamla():
+                c["acilista_sifre"] = True
+                config.kaydet(c)
+                self.w.destroy()
+                self.app.ayarlar_kaydedildi()
+            SifrePenceresi(self.app, tamamla, self.w)
+            return
+        c["acilista_sifre"] = bool(self.acilis.get())
         self.w.destroy()
         self.app.ayarlar_kaydedildi()
 
@@ -826,6 +1043,12 @@ class YoneticiPenceresi(_Pencere):
                       text_color=self.t["text"], progress_color=self.t["accent"]).pack(anchor="w", padx=6, pady=(4, 2))
         self.aciklama("VKN, TC kimlik no, telefon, e-posta ve IBAN yapay zekâya gönderilmeden maskelenir; "
                       "forma gerçek değerleri yazılır.")
+        tsat = ctk.CTkFrame(self.alan, fg_color="transparent")
+        tsat.pack(fill="x", padx=6, pady=(4, 0))
+        self.test_btn = self.ikincil_buton(tsat, "Bağlantıyı test et", self.baglanti_test, width=150)
+        self.test_btn.pack(side="left")
+        self.test_sonuc = ctk.CTkLabel(tsat, text="", font=_f(11), text_color=self.t["sub"])
+        self.test_sonuc.pack(side="left", padx=8)
 
         self.bolum("Sistem")
         self.baslik = self.giris("Çağrı ekranının pencere başlığı", cfg["pencere_basligi"])
@@ -838,6 +1061,30 @@ class YoneticiPenceresi(_Pencere):
         self.hata.pack(anchor="w", padx=6)
 
         self.ana_buton("Kaydet", self.kaydet)
+
+    def baglanti_test(self):
+        c = dict(self.app.cfg)
+        c["saglayici"] = self._ters.get(self.servis.get(), "gemini")
+        c["gemini_key"] = self.gemini_key.get().strip()
+        c["gemini_hiz"] = "hizli" if self.hiz.get() == "Hızlı" else "dengeli"
+        c["api_key"] = self.api_key.get().strip()
+        if c["saglayici"] == "kopyala":
+            self.test_sonuc.configure(text="Kopyala-yapıştırda bağlantı gerekmez.", text_color=self.t["sub"])
+            return
+        self.test_btn.configure(state="disabled")
+        self.test_sonuc.configure(text="Test ediliyor…", text_color=self.t["sub"])
+
+        def is_():
+            ok, mesaj = ai.baglanti_testi(c)
+            self.app.root.after(0, lambda: bitti(ok, mesaj))
+
+        def bitti(ok, mesaj):
+            if not self.w.winfo_exists():
+                return
+            self.test_btn.configure(state="normal")
+            self.test_sonuc.configure(text=mesaj, text_color=self.t["ok"] if ok else self.t["err"])
+
+        threading.Thread(target=is_, daemon=True).start()
 
     def kaydet(self):
         y1 = self.y1.get()
