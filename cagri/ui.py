@@ -2,6 +2,7 @@
 """Ana pencere ve ayarlar penceresi."""
 import json
 import os
+import re
 import threading
 import time
 import tkinter as tk
@@ -21,6 +22,98 @@ SERVIS_ADLARI = {"gemini": "Gemini", "anthropic": "Claude API", "kopyala": "Kopy
 
 def _f(size, bold=False):
     return ctk.CTkFont(family=FONT, size=size, weight="bold" if bold else "normal")
+
+
+# ---------------------------------------------------------------- klavye kısayolları
+_GERI = [re.compile(r"\w+\s*$"), re.compile(r"[^\w\s]+\s*$"), re.compile(r"\s+$")]
+_ILERI = [re.compile(r"^\s*\w+"), re.compile(r"^\s*[^\w\s]+"), re.compile(r"^\s+")]
+
+
+def _eslesen_uzunluk(desenler, metin):
+    for d in desenler:
+        m = d.search(metin)
+        if m and m.group(0):
+            return len(m.group(0))
+    return 1 if metin else 0
+
+
+def _text_kelime(e, geri):
+    w = e.widget
+    try:
+        w.edit_separator()  # her kelime silme ayrı geri alınabilsin
+    except tk.TclError:
+        pass
+    if w.tag_ranges("sel"):
+        w.delete("sel.first", "sel.last")
+        return "break"
+    if geri:
+        n = _eslesen_uzunluk(_GERI, w.get("insert linestart", "insert") or w.get("insert -1c", "insert"))
+        w.delete(f"insert -{n}c", "insert")
+    else:
+        n = _eslesen_uzunluk(_ILERI, w.get("insert", "insert lineend") or w.get("insert", "insert +1c"))
+        w.delete("insert", f"insert +{n}c")
+    w.event_generate("<KeyRelease>")
+    return "break"
+
+
+def _entry_kelime(e, geri):
+    w = e.widget
+    if w.selection_present():
+        w.delete("sel.first", "sel.last")
+        return "break"
+    metin, imlec = w.get(), w.index("insert")
+    if geri:
+        n = _eslesen_uzunluk(_GERI, metin[:imlec])
+        w.delete(imlec - n, imlec)
+    else:
+        n = _eslesen_uzunluk(_ILERI, metin[imlec:])
+        w.delete(imlec, imlec + n)
+    return "break"
+
+
+def _tumunu_sec_text(e):
+    e.widget.tag_add("sel", "1.0", "end-1c")
+    e.widget.mark_set("insert", "end-1c")
+    return "break"
+
+
+def _tumunu_sec_entry(e):
+    e.widget.select_range(0, "end")
+    e.widget.icursor("end")
+    return "break"
+
+
+def _kisayollari_kur(root):
+    """Windows'taki alışılmış kısayollar: Ctrl+Backspace/Delete kelime siler, Ctrl+A tümünü seçer,
+    Ctrl+Z / Ctrl+Y geri al / yinele. Tüm yazı ve giriş kutularında geçerlidir."""
+    root.bind_class("Text", "<Control-BackSpace>", lambda e: _text_kelime(e, True))
+    root.bind_class("Text", "<Control-Delete>", lambda e: _text_kelime(e, False))
+    root.bind_class("Entry", "<Control-BackSpace>", lambda e: _entry_kelime(e, True))
+    root.bind_class("Entry", "<Control-Delete>", lambda e: _entry_kelime(e, False))
+    for tus in ("<Control-a>", "<Control-A>"):
+        root.bind_class("Text", tus, _tumunu_sec_text)
+        root.bind_class("Entry", tus, _tumunu_sec_entry)
+
+    def yinele(e):
+        try:
+            e.widget.edit_redo()
+        except tk.TclError:
+            pass
+        e.widget.event_generate("<KeyRelease>")
+        return "break"
+
+    def geri_al(e):
+        try:
+            e.widget.edit_undo()
+        except tk.TclError:
+            pass
+        e.widget.event_generate("<KeyRelease>")
+        return "break"
+
+    for tus in ("<Control-z>", "<Control-Z>"):
+        root.bind_class("Text", tus, geri_al)
+    for tus in ("<Control-y>", "<Control-Y>"):
+        root.bind_class("Text", tus, yinele)
 
 
 def _ikon_ver(pencere):
@@ -47,6 +140,7 @@ class App:
         self.root.geometry("540x470")
         self.root.minsize(440, 400)
         _ikon_ver(self.root)
+        _kisayollari_kur(self.root)
         self._logo = self._logo_yukle()
 
         self.kur()
@@ -133,7 +227,7 @@ class App:
         else:
             kutu = ctk.CTkFrame(ic, fg_color="transparent")
             kutu.pack(fill="both", expand=True)
-            self.note = ctk.CTkTextbox(kutu, wrap="word", font=_f(13), fg_color=t["input"], text_color=t["text"],
+            self.note = ctk.CTkTextbox(kutu, wrap="word", undo=True, maxundo=-1, font=_f(13), fg_color=t["input"], text_color=t["text"],
                                        border_width=1, border_color=t["border"], corner_radius=12)
             self.note.pack(fill="both", expand=True)
             self.ipucu = ctk.CTkLabel(kutu, text=IPUCU, font=_f(12), text_color=t["sub"], justify="left",

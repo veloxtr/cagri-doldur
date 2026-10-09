@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Uygulama sürümü. Yeni sürüm için sadece burayı artırıp main'e gönder; GitHub exe'yi derleyip yayınlar."""
 
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 APP_NAME = "Çağrı Doldur"
 APP_ID = "CagriDoldur"
 YAPIMCI = "EYK"
