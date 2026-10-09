@@ -1,4 +1,4 @@
-ÇAĞRI DOLDUR v1.1  -  © 2026 EYK · All rights reserved
+ÇAĞRI DOLDUR v1.2  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -11,7 +11,7 @@ KULLANIM
 - "Çağrıyı Tamamla" ekranını aç, notunu yaz, Ctrl+Enter (veya butona bas).
 - ⚙ Ayarlar: tema, pencere üstte kalsın, varsayılan metinler, güncelleme kontrolü (şifresiz).
 - ⚙ Ayarlar > 🔒 API ve yönetici ayarları: yapay zekâ servisi, anahtarlar, hız, güncelleme kaynağı.
-  İlk girişte yetkili şifresi belirlenir, sonra her girişte sorulur (doğru girilince 5 dk tekrar sormaz).
+  İlk girişte yetkili şifresi belirlenir, sonra her girişte sorulur.
   Şifre unutulursa: %APPDATA%\CagriDoldur\ayarlar.json silinir, ayarlar sıfırlanır.
 - API anahtarları diskte Windows şifrelemesiyle (DPAPI) saklanır.
 - Kopyala-yapıştır seçilirse ekranda yazı kutusu yerine "Panodan yapıştır ve doldur" butonu çıkar.
@@ -24,11 +24,12 @@ ONLINE GÜNCELLEME (GitHub ile)
 - Kod: https://github.com/veloxtr/cagri-doldur
 - Yeni sürüm çıkarmak için cagri/version.py içindeki VERSION'u artırıp main'e göndermek yeterli.
   GitHub exe'yi kendisi derler ve "vX.Y.Z" olarak Releases'a koyar.
-- Uygulama açılışta bunu görür, üstte "Yeni sürüm hazır" bandı çıkar, "Güncelle"ye basınca
-  kendini indirip yeniden açılır.
-- Ayarlar > Güncelleme kaynağı kutusuna repo adını yaz (veloxtr/cagri-doldur).
+- Uygulama açılışta yeni sürümü görürse "Güncellensin mi?" diye sorar. "Sonra" denirse sürüm
+  numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.2  Açılışta "güncellensin mi?" sorusu, "sürüm güncel değil" uyarısı, API ayarlarında
+      şifre her girişte soruluyor, güncelleme kaynağı varsayılan olarak tanımlı.
 v1.1  Daha küçük exe (Pillow, requests, pywinauto/pywin32 çıkarıldı), şifreli API ayarları,
       Ayarlar'ın ikinci kez açılmaması hatası düzeltildi, anahtarlar şifreli saklanıyor.
 v1.0  Yeni arayüz, temalar, logo, exe, online güncelleme altyapısı, hızlandırma.

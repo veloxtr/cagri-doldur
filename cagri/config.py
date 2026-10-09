@@ -61,6 +61,8 @@ def yukle():
     acik_kalmis = any(cfg.get(k) and not str(cfg.get(k)).startswith("dpapi:") for k in GIZLI_ALANLAR)
     for k in GIZLI_ALANLAR:
         cfg[k] = guvenlik.ac(cfg.get(k, ""))
+    if not str(cfg.get("guncelleme_repo") or "").strip():
+        cfg["guncelleme_repo"] = VARSAYILAN["guncelleme_repo"]
     if cfg.get("saglayici") not in SAGLAYICILAR:
         cfg["saglayici"] = "gemini"
     if not str(cfg.get("api_key", "")).startswith("sk-"):

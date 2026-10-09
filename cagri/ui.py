@@ -44,7 +44,6 @@ class App:
         self.root.minsize(440, 400)
         _ikon_ver(self.root)
         self._logo = self._logo_yukle()
-        self.yetki_zamani = 0.0
 
         self.kur()
         self.root.after(300, self._acilis_isleri)
@@ -81,22 +80,15 @@ class App:
         ctk.CTkLabel(satir, text=APP_NAME, font=_f(18, True), text_color=t["text"]).pack(side="left")
         ctk.CTkLabel(satir, text=f" {kisa_surum()} ", font=_f(11, True), fg_color=t["chip"],
                      text_color=t["chip_text"], corner_radius=8, height=20).pack(side="left", padx=(8, 0), pady=(3, 0))
+        if self.guncelleme:
+            ctk.CTkButton(satir, text="⚠ Kullandığınız sürüm güncel değil", font=_f(11, True), height=20,
+                          corner_radius=8, fg_color=t["warn"], hover_color=t["accent_hover"], text_color="#1A1300",
+                          width=10, command=self.guncelleme_sor).pack(side="left", padx=(6, 0), pady=(3, 0))
         ctk.CTkLabel(baslik, text=self._servis_etiketi(), font=_f(11), text_color=t["sub"],
                      height=14).pack(anchor="w")
         ctk.CTkButton(ust, text="⚙", width=38, height=38, corner_radius=10, font=_f(18),
                       fg_color=t["card"], hover_color=t["border"], text_color=t["text"],
                       border_width=1, border_color=t["border"], command=self.ayarlari_ac).pack(side="right")
-
-        # --- güncelleme bandı
-        if self.guncelleme:
-            band = ctk.CTkFrame(govde, fg_color=t["chip"], corner_radius=12)
-            band.pack(fill="x", pady=(12, 0))
-            ctk.CTkLabel(band, text=f"✦  Yeni sürüm hazır: v{self.guncelleme['version']}",
-                         font=_f(12, True), text_color=t["chip_text"]).pack(side="left", padx=12, pady=8)
-            self.guncelle_btn = ctk.CTkButton(band, text="Güncelle", width=90, height=28, corner_radius=8,
-                                              font=_f(12, True), fg_color=t["accent"], hover_color=t["accent_hover"],
-                                              text_color=t["on_accent"], command=self.guncellemeyi_uygula)
-            self.guncelle_btn.pack(side="right", padx=8, pady=6)
 
         # --- kart
         kart = ctk.CTkFrame(govde, fg_color=t["card"], corner_radius=16, border_width=1, border_color=t["border"])
@@ -231,38 +223,27 @@ class App:
                 mesaj = f"Yeni sürüm var: v{info['version']}" if info else f"En güncel sürümü kullanıyorsun ({kisa_surum()})."
             except Exception as e:
                 info, mesaj = None, f"Kontrol edilemedi: {e}"
-            self.root.after(0, lambda: self._guncelleme_sonucu(info, mesaj, bitince))
+            self.root.after(0, lambda: self._guncelleme_sonucu(info, mesaj, bitince, sessiz))
 
         threading.Thread(target=is_, daemon=True).start()
 
-    def _guncelleme_sonucu(self, info, mesaj, bitince):
-        if info and info != self.guncelleme:
+    def _guncelleme_sonucu(self, info, mesaj, bitince, sessiz=False):
+        yeni = bool(info) and info != self.guncelleme
+        if yeni:
             self.guncelleme = info
             self.kur()
+        if info and ((sessiz and yeni) or bitince):
+            self.root.after(400, self.guncelleme_sor)  # kullanıcıya "güncellensin mi?" diye sor
         if bitince:
             bitince(mesaj)
 
-    def guncellemeyi_uygula(self):
-        info = self.guncelleme
-        self.guncelle_btn.configure(state="disabled", text="İndiriliyor…")
-
-        def ilerleme(oran):
-            self.root.after(0, lambda: self.guncelle_btn.configure(text=f"%{int(oran * 100)}"))
-
-        def is_():
-            try:
-                kapat = updater.uygula(info, ilerleme)
-            except Exception as e:
-                msg = str(e)
-                self.root.after(0, lambda: (self.durum_yaz(f"Güncelleme olmadı: {msg}", "err"),
-                                            self.guncelle_btn.configure(state="normal", text="Güncelle")))
-                return
-            if kapat:
-                self.root.after(0, self.root.destroy)
-            else:
-                self.root.after(0, lambda: self.guncelle_btn.configure(state="normal", text="Güncelle"))
-
-        threading.Thread(target=is_, daemon=True).start()
+    def guncelleme_sor(self):
+        if not self.guncelleme:
+            return
+        if self._acik_mi(getattr(self, "guncelleme_penceresi", None)):
+            self.guncelleme_penceresi.w.lift()
+            return
+        self.guncelleme_penceresi = GuncellemePenceresi(self, self.guncelleme)
 
     # ------------------------------------------------------------ doldurma
     def ai_ile_doldur(self):
@@ -337,19 +318,9 @@ class App:
             return
         self.ayar_penceresi = AyarPenceresi(self)
 
-    YETKI_SURESI = 300  # sn: şifre girildikten sonra 5 dk tekrar sorulmaz
-
     def yetkili_islem(self, sonra, ebeveyn=None):
-        """Yetkili şifresi doğrulanınca 'sonra'yı çağırır. Şifre yoksa önce belirletir."""
-        if time.monotonic() - self.yetki_zamani < self.YETKI_SURESI:
-            sonra()
-            return
-
-        def basarili():
-            self.yetki_zamani = time.monotonic()
-            sonra()
-
-        SifrePenceresi(self, basarili, ebeveyn or self.root)
+        """Her seferinde yetkili şifresi sorar; doğrulanınca 'sonra'yı çağırır. Şifre yoksa önce belirletir."""
+        SifrePenceresi(self, sonra, ebeveyn or self.root)
 
     def ayarlar_kaydedildi(self, mesaj="Ayarlar kaydedildi."):
         config.kaydet(self.cfg)
@@ -602,3 +573,66 @@ class YoneticiPenceresi(_Pencere):
             c["yetkili_sifre"] = guvenlik.sifre_ozeti(y1)
         self.w.destroy()
         self.app.ayarlar_kaydedildi("API ayarları kaydedildi.")
+
+
+class GuncellemePenceresi(_Pencere):
+    """'Sunucuda yeni sürüm var, güncellensin mi?' penceresi; indirme ilerlemesini de gösterir."""
+
+    SARMA = 360
+
+    def __init__(self, app, info):
+        super().__init__(app, "Güncelleme", "420x300", kaydir=False)
+        self.info = info
+        t = self.t
+        ctk.CTkLabel(self.alan, text="Yeni sürüm hazır", font=_f(16, True), text_color=t["text"]).pack(anchor="w", padx=6)
+        ctk.CTkLabel(self.alan, text=f"Sunucuda v{info['version']} var, sen {kisa_surum()} kullanıyorsun.\n"
+                                     "Şimdi güncellensin mi?", font=_f(12), text_color=t["text"],
+                     justify="left").pack(anchor="w", padx=6, pady=(6, 4))
+        notlar = (info.get("notes") or "").strip()
+        if notlar:
+            self.aciklama(notlar[:280] + ("…" if len(notlar) > 280 else ""))
+        self.aciklama("Ayarların, şifren ve API anahtarların korunur. Uygulama kapanıp yeni sürümle açılır.")
+        self.cubuk = ctk.CTkProgressBar(self.alan, progress_color=t["accent"], fg_color=t["input"], height=8)
+        self.durum = ctk.CTkLabel(self.alan, text="", font=_f(11), text_color=t["sub"])
+
+        alt = ctk.CTkFrame(self.w, fg_color="transparent")
+        alt.pack(fill="x", padx=16, pady=12)
+        self.sonra_btn = self.ikincil_buton(alt, "Sonra", self.w.destroy, width=110, height=40)
+        self.sonra_btn.pack(side="left")
+        self.evet_btn = ctk.CTkButton(alt, text="Şimdi güncelle", height=40, corner_radius=12, font=_f(14, True),
+                                      fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"],
+                                      command=self.baslat)
+        self.evet_btn.pack(side="right", fill="x", expand=True, padx=(10, 0))
+
+    def baslat(self):
+        app = self.app
+        self.evet_btn.configure(state="disabled", text="İndiriliyor…")
+        self.sonra_btn.configure(state="disabled")
+        self.cubuk.set(0)
+        self.cubuk.pack(fill="x", padx=6, pady=(8, 2))
+        self.durum.pack(anchor="w", padx=6)
+
+        def ilerleme(oran):
+            app.root.after(0, lambda: (self.cubuk.set(oran), self.durum.configure(text=f"%{int(oran * 100)} indirildi")))
+
+        def is_():
+            try:
+                kapat = updater.uygula(self.info, ilerleme)
+            except Exception as e:
+                msg = str(e)
+                app.root.after(0, lambda: self._hata(msg))
+                return
+            if kapat:
+                app.root.after(0, lambda: (self.durum.configure(text="Yeni sürüm açılıyor…"),
+                                           app.root.after(400, app.root.destroy)))
+            else:
+                app.root.after(0, self.w.destroy)
+
+        threading.Thread(target=is_, daemon=True).start()
+
+    def _hata(self, msg):
+        if not self.w.winfo_exists():
+            return
+        self.durum.configure(text=f"Güncelleme olmadı: {msg}", text_color=self.t["err"])
+        self.evet_btn.configure(state="normal", text="Tekrar dene")
+        self.sonra_btn.configure(state="normal")
