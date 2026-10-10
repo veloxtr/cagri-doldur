@@ -17,7 +17,6 @@ IPUCU = ("Ne oldu, ne yaptın? Dağınık yazabilirsin.\n\n"
          "Örn: vkn 10 hane uyarısı veriyordu, gümrük carisi boştu, oluşturup seçtim, "
          "gönderim yapıldı müşteri onay verdi")
 
-SERVIS_ADLARI = {"gemini": "Gemini", "anthropic": "Claude API", "kopyala": "Kopyala-yapıştır"}
 
 # Araç çantası: kategori -> [(anahtar, görünen ad)]. Yeni araç = yeni satır.
 ARACLAR = [
@@ -303,37 +302,25 @@ class App:
         ic = ctk.CTkFrame(kart, fg_color="transparent")
         ic.pack(fill="both", expand=True, padx=14, pady=14)
 
-        kopyala = self.cfg.get("saglayici") == "kopyala"
-        if kopyala:
-            ctk.CTkLabel(ic, text="Claude'dan gelen bloğu doldur", font=_f(14, True),
-                         text_color=t["text"]).pack(anchor="w")
-            ctk.CTkLabel(ic, justify="left", wraplength=440, font=_f(12), text_color=t["sub"],
-                         text="1. Claude'a notunu yazıp 'blok' iste.\n"
-                              "2. Gelen bloğu kopyala.\n"
-                              "3. 'Çağrıyı Tamamla' ekranı açıkken aşağıdaki butona bas.").pack(anchor="w", pady=(8, 0))
-            self.note = None
-            btn_metni = "Panodan yapıştır ve doldur"
-            komut = self.panodan_doldur
-        else:
-            kutu = ctk.CTkFrame(ic, fg_color="transparent")
-            kutu.pack(fill="both", expand=True)
-            self.note = ctk.CTkTextbox(kutu, wrap="word", undo=True, maxundo=-1, font=_f(13), fg_color=t["input"],
-                                       text_color=t["text"], border_width=1, border_color=t["border"], corner_radius=12)
-            self.note.pack(fill="both", expand=True)
-            self.ipucu = ctk.CTkLabel(kutu, text=IPUCU, font=_f(12), text_color=t["sub"], justify="left",
-                                      wraplength=420, fg_color=t["input"], anchor="nw")
-            self.note.bind("<KeyRelease>", lambda e: self._ipucu_guncelle())
-            self.note.bind("<FocusIn>", lambda e: self._ipucu_guncelle())
-            self.note.bind("<FocusOut>", lambda e: self._ipucu_guncelle())
-            self.note.bind("<Control-Return>", self._kisayol)
-            self.note.bind("<Control-KP_Enter>", self._kisayol)
-            self.ipucu.bind("<Button-1>", lambda e: self.note.focus_set())
-            if self.not_metni:
-                self.note.insert("1.0", self.not_metni)
-            self._ipucu_guncelle()
-            self._ucret_alani(ic)
-            btn_metni = "✦  AI yorumla ve doldur"
-            komut = self.ai_ile_doldur
+        kutu = ctk.CTkFrame(ic, fg_color="transparent")
+        kutu.pack(fill="both", expand=True)
+        self.note = ctk.CTkTextbox(kutu, wrap="word", undo=True, maxundo=-1, font=_f(13), fg_color=t["input"],
+                                   text_color=t["text"], border_width=1, border_color=t["border"], corner_radius=12)
+        self.note.pack(fill="both", expand=True)
+        self.ipucu = ctk.CTkLabel(kutu, text=IPUCU, font=_f(12), text_color=t["sub"], justify="left",
+                                  wraplength=420, fg_color=t["input"], anchor="nw")
+        self.note.bind("<KeyRelease>", lambda e: self._ipucu_guncelle())
+        self.note.bind("<FocusIn>", lambda e: self._ipucu_guncelle())
+        self.note.bind("<FocusOut>", lambda e: self._ipucu_guncelle())
+        self.note.bind("<Control-Return>", self._kisayol)
+        self.note.bind("<Control-KP_Enter>", self._kisayol)
+        self.ipucu.bind("<Button-1>", lambda e: self.note.focus_set())
+        if self.not_metni:
+            self.note.insert("1.0", self.not_metni)
+        self._ipucu_guncelle()
+        self._ucret_alani(ic)
+        btn_metni = "✦  AI yorumla ve doldur"
+        komut = self.ai_ile_doldur
 
         self.btn = ctk.CTkButton(govde, text=btn_metni, height=46, corner_radius=12, font=_f(14, True),
                                  fg_color=t["accent"], hover_color=t["accent_hover"], text_color=t["on_accent"],
@@ -347,7 +334,7 @@ class App:
         self.durum = ctk.CTkLabel(durum, text="", font=_f(12), text_color=t["sub"], anchor="w", justify="left",
                                   wraplength=420)
         self.durum.pack(side="left", fill="x", expand=True, padx=(4, 0))
-        ctk.CTkLabel(durum, text="" if kopyala else "Ctrl + Enter", font=_f(11), text_color=t["sub"]).pack(side="right")
+        ctk.CTkLabel(durum, text="Ctrl + Enter", font=_f(11), text_color=t["sub"]).pack(side="right")
         self._durum_varsayilan()
         if self.note is not None:
             self.root.after(50, self.note.focus_set)
@@ -520,11 +507,7 @@ class App:
             return None
 
     def _servis_etiketi(self):
-        s = self.cfg.get("saglayici")
-        if s == "gemini":
-            metin = "Gemini · " + ("Hızlı" if self.cfg.get("gemini_hiz") == "hizli" else "Dengeli")
-        else:
-            metin = SERVIS_ADLARI.get(s, "")
+        metin = "Hızlı" if self.cfg.get("gemini_hiz") == "hizli" else "Dengeli"
         bugun = gecmis.bugun_sayisi()
         return metin + (f" · Bugün {bugun} çağrı" if bugun else "")
 
@@ -557,15 +540,7 @@ class App:
         self.durum.configure(text=metin, text_color=t["text"] if tur in ("ok", "err") else t["sub"])
 
     def _durum_varsayilan(self):
-        s = self.cfg.get("saglayici")
-        if s == "gemini" and not self.cfg.get("gemini_key"):
-            self.durum_yaz("Başlamak için ⚙ Ayarlar > API ve yönetici ayarları'ndan Gemini anahtarını gir.", "is")
-        elif s == "anthropic" and not self.cfg.get("api_key"):
-            self.durum_yaz("Başlamak için ⚙ Ayarlar > API ve yönetici ayarları'ndan Claude anahtarını gir.", "is")
-        elif s == "kopyala":
-            self.durum_yaz("Hazır. 'Çağrıyı Tamamla' ekranını aç, bloğu kopyalayıp butona bas.")
-        else:
-            self.durum_yaz("Hazır. 'Çağrıyı Tamamla' ekranını aç, notunu yaz.")
+        self.durum_yaz("Hazır. 'Çağrıyı Tamamla' ekranını aç, notunu yaz.")
 
     def _mesgul(self, var):
         self.mesgul = var
@@ -654,10 +629,6 @@ class App:
         if not notu:
             self.durum_yaz("Önce notunu yaz.", "is")
             return
-        s = self.cfg.get("saglayici")
-        if (s == "gemini" and not self.cfg.get("gemini_key")) or (s == "anthropic" and not self.cfg.get("api_key")):
-            self.durum_yaz("API anahtarı girilmemiş: ⚙ Ayarlar > API ve yönetici ayarları.", "is")
-            return
         try:
             ucret_metni, ucret_ozeti = self._ucret_bilgisi()
         except ucret.UcretHatasi as e:
@@ -680,21 +651,6 @@ class App:
                 self.root.after(0, lambda: (self._mesgul(False), self.durum_yaz(msg, "err")))
 
         threading.Thread(target=is_, daemon=True).start()
-
-    def panodan_doldur(self):
-        if self.mesgul:
-            return
-        try:
-            text = self.root.clipboard_get()
-        except tk.TclError:
-            text = ""
-        vals = ai.metinden_alanlar(text)
-        if not vals:
-            self.durum_yaz("Panoda doldurulacak blok yok. Önce Claude'daki bloğu kopyala.", "is")
-            return
-        self._mesgul(True)
-        self._son = {"not": "(Claude bloğundan)", "secimler": {}}
-        self._ekrana(vals, None, time.perf_counter(), temizle=False)
 
     def _ekrana(self, vals, ai_sure, t0, temizle):
         self.durum_yaz("Çağrı ekranı dolduruluyor…", "is")
@@ -838,10 +794,10 @@ class _Pencere:
 
 
 class AyarPenceresi(_Pencere):
-    """Herkesin girebildiği ayarlar. API anahtarları ayrı, şifreli bölümde."""
+    """Herkesin girebildiği ayarlar. Yapay zekâ ve yönetici ayarları ayrı, şifreli bölümde."""
 
     def __init__(self, app):
-        super().__init__(app, "Ayarlar", "460x600")
+        super().__init__(app, "Ayarlar", "460x470")
         cfg, t = app.cfg, self.t
 
         self.bolum("Görünüm")
@@ -854,10 +810,6 @@ class AyarPenceresi(_Pencere):
         self.ustte = ctk.BooleanVar(value=bool(cfg.get("her_zaman_ustte", True)))
         ctk.CTkSwitch(self.alan, text="Pencere her zaman üstte kalsın", variable=self.ustte, font=_f(12),
                       text_color=t["text"], progress_color=t["accent"]).pack(anchor="w", padx=6, pady=(0, 4))
-
-        self.bolum("Form varsayılanları")
-        self.ucret = self.giris("Ücret metni (notta ücret geçmezse)", cfg["varsayilan_ucret"])
-        self.kayit = self.giris("'Kayıt no bildirildi' cevabı", cfg["varsayilan_kayit"])
 
         self.bolum("Güncelleme")
         satir = ctk.CTkFrame(self.alan, fg_color="transparent")
@@ -872,55 +824,12 @@ class AyarPenceresi(_Pencere):
                       text_color=t["text"], progress_color=t["accent"]).pack(anchor="w", padx=6, pady=(0, 2))
         self.aciklama("Uygulama her açıldığında yetkili şifresini ister.")
 
-        self.bolum("Yedekleme")
-        ysat = ctk.CTkFrame(self.alan, fg_color="transparent")
-        ysat.pack(fill="x", padx=6, pady=(0, 2))
-        self.ikincil_buton(ysat, "Ayarları dışa aktar", self.disa_aktar, width=150).pack(side="left")
-        self.ikincil_buton(ysat, "İçe aktar", self.ice_aktar, width=100).pack(side="left", padx=6)
-        self.yedek_sonuc = ctk.CTkLabel(self.alan, text="", font=_f(11), text_color=t["sub"], anchor="w",
-                                        wraplength=self.SARMA, justify="left")
-        self.yedek_sonuc.pack(fill="x", padx=6)
-        self.aciklama("Anahtar ve ayarları şifreli bir dosyaya kaydeder; başka bilgisayarda içe aktarırsın.")
-
         self.bolum("Yetkili")
-        kilit = "🔒  API ve yönetici ayarları"
+        kilit = "🔒  Yapay zekâ ve yönetici ayarları"
         self.ikincil_buton(self.alan, kilit, self.yonetici_ac, height=40, anchor="w").pack(fill="x", padx=6, pady=(2, 4))
-        self.aciklama("Yapay zekâ servisi, API anahtarları, güncelleme kaynağı. Yetkili şifresi ister.")
+        self.aciklama("Yorumlama hızı, gizlilik filtresi, bağlantı testi, güncelleme kaynağı. Yetkili şifresi ister.")
 
         self.ana_buton("Kaydet", self.kaydet)
-
-    def disa_aktar(self):
-        from tkinter import filedialog, simpledialog
-        yol = filedialog.asksaveasfilename(parent=self.w, title="Ayarları dışa aktar",
-                                           defaultextension=".baz", initialfile="bilnex-assist-ayar.baz",
-                                           filetypes=[("Bilnex Assist yedek", "*.baz")])
-        if not yol:
-            return
-        parola = simpledialog.askstring("Dışa aktar", "Yedek için bir şifre belirle:", show="•", parent=self.w)
-        if not parola:
-            return
-        try:
-            config.disa_aktar(self.app.cfg, yol, parola)
-            self.yedek_sonuc.configure(text="Dışa aktarıldı. Dosyayı ve şifreyi sakla.", text_color=self.t["ok"])
-        except Exception as e:
-            self.yedek_sonuc.configure(text=f"Olmadı: {e}", text_color=self.t["err"])
-
-    def ice_aktar(self):
-        from tkinter import filedialog, simpledialog
-        yol = filedialog.askopenfilename(parent=self.w, title="Ayarları içe aktar",
-                                         filetypes=[("Bilnex Assist yedek", "*.baz"), ("Tüm dosyalar", "*.*")])
-        if not yol:
-            return
-        parola = simpledialog.askstring("İçe aktar", "Yedek şifresini gir:", show="•", parent=self.w)
-        if not parola:
-            return
-        try:
-            config.ice_aktar(self.app.cfg, yol, parola)
-        except Exception as e:
-            self.yedek_sonuc.configure(text=f"Olmadı: {e}", text_color=self.t["err"])
-            return
-        self.w.destroy()
-        self.app.ayarlar_kaydedildi("Ayarlar içe aktarıldı.")
 
     def kontrol_et(self):
         self.kontrol_sonuc.configure(text="Kontrol ediliyor…")
@@ -946,8 +855,6 @@ class AyarPenceresi(_Pencere):
         c = self.app.cfg
         c["tema"] = themes.anahtar(self.tema.get())
         c["her_zaman_ustte"] = bool(self.ustte.get())
-        c["varsayilan_ucret"] = self.ucret.get().strip() or config.VARSAYILAN["varsayilan_ucret"]
-        c["varsayilan_kayit"] = self.kayit.get().strip() or "Hayır"
         if self.acilis.get() and not c.get("yetkili_sifre"):
             # Açılış kilidi için önce bir şifre belirlensin.
             def tamamla():
@@ -1021,23 +928,18 @@ class SifrePenceresi(_Pencere):
 
 
 class YoneticiPenceresi(_Pencere):
-    """Şifreyle açılan bölüm: yapay zekâ servisi, anahtarlar, güncelleme kaynağı, şifre değiştirme."""
+    """Şifreyle açılan bölüm: yorumlama hızı, gizlilik, bağlantı testi, güncelleme kaynağı, şifre değiştirme."""
 
     def __init__(self, app, ebeveyn):
-        super().__init__(app, "API ve yönetici ayarları", "460x640", ebeveyn)
+        super().__init__(app, "Yapay zekâ ve yönetici ayarları", "460x520", ebeveyn)
         cfg = app.cfg
 
         self.bolum("Yapay zekâ")
-        self._ters = {v: k for k, v in SERVIS_ADLARI.items()}
-        self.servis = ctk.StringVar(value=SERVIS_ADLARI[cfg["saglayici"]])
-        self.segment(list(SERVIS_ADLARI.values()), self.servis)
-        self.gemini_key = self.giris("Gemini anahtarı (aistudio.google.com → Get API key)", cfg["gemini_key"], gizli=True)
-        self.etiket("Gemini hızı")
+        self.aciklama("Yapay zekâ bağlantısı uygulamanın içinde hazırdır; anahtar girmene gerek yok.")
+        self.etiket("Yorumlama hızı")
         self.hiz = ctk.StringVar(value="Hızlı" if cfg.get("gemini_hiz") == "hizli" else "Dengeli")
         self.segment(["Hızlı", "Dengeli"], self.hiz)
-        self.aciklama("Hızlı: Flash-Lite, en çabuk cevap. Dengeli: Flash, daha iyi yorum.")
-        self.api_key = self.giris("Claude API anahtarı (varsa)", cfg["api_key"], gizli=True)
-        self.aciklama("Anahtarlar bu bilgisayarda Windows şifrelemesiyle saklanır; dosya kopyalansa da okunamaz.")
+        self.aciklama("Hızlı: en çabuk cevap. Dengeli: biraz daha yavaş ama daha iyi yorum.")
         self.gizlilik = ctk.BooleanVar(value=bool(cfg.get("gizlilik", True)))
         ctk.CTkSwitch(self.alan, text="Gizlilik filtresi", variable=self.gizlilik, font=_f(12),
                       text_color=self.t["text"], progress_color=self.t["accent"]).pack(anchor="w", padx=6, pady=(4, 2))
@@ -1064,13 +966,7 @@ class YoneticiPenceresi(_Pencere):
 
     def baglanti_test(self):
         c = dict(self.app.cfg)
-        c["saglayici"] = self._ters.get(self.servis.get(), "gemini")
-        c["gemini_key"] = self.gemini_key.get().strip()
         c["gemini_hiz"] = "hizli" if self.hiz.get() == "Hızlı" else "dengeli"
-        c["api_key"] = self.api_key.get().strip()
-        if c["saglayici"] == "kopyala":
-            self.test_sonuc.configure(text="Kopyala-yapıştırda bağlantı gerekmez.", text_color=self.t["sub"])
-            return
         self.test_btn.configure(state="disabled")
         self.test_sonuc.configure(text="Test ediliyor…", text_color=self.t["sub"])
 
@@ -1096,17 +992,14 @@ class YoneticiPenceresi(_Pencere):
                 self.hata.configure(text="Yeni şifreler aynı değil.")
                 return
         c = self.app.cfg
-        c["saglayici"] = self._ters.get(self.servis.get(), "gemini")
-        c["gemini_key"] = self.gemini_key.get().strip()
         c["gemini_hiz"] = "hizli" if self.hiz.get() == "Hızlı" else "dengeli"
-        c["api_key"] = self.api_key.get().strip()
         c["gizlilik"] = bool(self.gizlilik.get())
         c["pencere_basligi"] = self.baslik.get().strip() or "Çağrıyı Tamamla"
         c["guncelleme_repo"] = self.repo.get().strip()
         if y1:
             c["yetkili_sifre"] = guvenlik.sifre_ozeti(y1)
         self.w.destroy()
-        self.app.ayarlar_kaydedildi("API ayarları kaydedildi.")
+        self.app.ayarlar_kaydedildi("Ayarlar kaydedildi.")
 
 
 class GuncellemePenceresi(_Pencere):

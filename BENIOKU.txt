@@ -1,4 +1,4 @@
-BILNEX ASSIST v1.6.0 (araçlar: Çağrı Doldur, Mesai Hak Edişi)  -  © 2026 EYK · All rights reserved
+BILNEX ASSIST v1.7.0 (araçlar: Çağrı Doldur, Mesai Hak Edişi)  -  © 2026 EYK · All rights reserved
 
 KURULUM (bir kere)
 1. Bu klasörü bir yere çıkar (ör. Belgeler\CagriDoldur_kaynak).
@@ -9,15 +9,21 @@ KURULUM (bir kere)
 
 KULLANIM
 - "Çağrıyı Tamamla" ekranını aç, notunu yaz, Ctrl+Enter (veya butona bas).
-- ⚙ Ayarlar: tema, pencere üstte kalsın, varsayılan metinler, güncelleme kontrolü (şifresiz).
-- ⚙ Ayarlar > 🔒 API ve yönetici ayarları: yapay zekâ servisi, anahtarlar, hız, güncelleme kaynağı.
+- ⚙ Ayarlar: tema, pencere üstte kalsın, güncelleme kontrolü (şifresiz), açılışta şifre.
+- ⚙ Ayarlar > 🔒 Yapay zekâ ve yönetici ayarları: yorumlama hızı, gizlilik filtresi,
+  bağlantı testi, güncelleme kaynağı, yetkili şifresi.
   İlk girişte yetkili şifresi belirlenir, sonra her girişte sorulur.
   Şifre unutulursa: %APPDATA%\CagriDoldur\ayarlar.json silinir, ayarlar sıfırlanır.
-- API anahtarları diskte Windows şifrelemesiyle (DPAPI) saklanır.
-- Kopyala-yapıştır seçilirse ekranda yazı kutusu yerine "Panodan yapıştır ve doldur" butonu çıkar.
+
+YAPAY ZEKÂ ANAHTARI
+- Artık uygulamaya API anahtarı girilmez. Bağlantı, uygulamanın bağlandığı güvenli bir
+  sunucu (Cloudflare Worker proxy) üzerinden gider; anahtar sunucuda durur, kimse görmez.
+- Sunucu adresi ve uygulama jetonu derleme sırasında GitHub gizli anahtarlarından
+  (BA_PROXY_URL / BA_PROXY_TOKEN) yazılır; açık depoda görünmez.
+- "Bağlantıyı test et" ile tek tuşta bağlantının çalıştığı kontrol edilir.
 
 HIZ
-- "Hızlı" mod Flash-Lite kullanır, en çabuk cevap verir. "Dengeli" daha iyi yorumlar.
+- "Hızlı" en çabuk cevap verir. "Dengeli" daha iyi yorumlar.
 - Her doldurmadan sonra altta AI ve ekran süreleri yazar; yavaşlık olursa bu sürelerle bildir.
 
 ONLINE GÜNCELLEME (GitHub ile)
@@ -28,6 +34,7 @@ ONLINE GÜNCELLEME (GitHub ile)
   numarasının yanında "Kullandığınız sürüm güncel değil" uyarısı kalır; tıklayınca yine sorar.
 
 SÜRÜM GEÇMİŞİ
+v1.7.0 API anahtarı kaldırıldı (bağlantı güvenli proxy üzerinden), ayarlar sadeleşti (Form varsayılanları ve Yedekleme çıktı).
 v1.6.0 Menü yapısı (araç çantası), Mesai Hak Edişi aracı, bağlantı testi, ayar dışa/içe aktarma, açılışta şifre.
 v1.5.1 Logo rengi #FF7F00.
 v1.5.0 Yeni ad: Bilnex Assist (Çağrı Doldur ilk araç), yeni BA logosu, exe adı BilnexAssist.exe.
@@ -48,7 +55,8 @@ GELİŞTİRİCİ NOTU (klasör yapısı)
 main.py              giriş noktası
 cagri/version.py     sürüm numarası
 cagri/prompt.py      form alanları, AI kuralları ve örnek çağrılar (AI'nın üslubu buradan)
-cagri/ai.py          Gemini / Claude bağlantısı
+cagri/ai.py          notu yapay zekâya yorumlatma (proxy üzerinden)
+cagri/dagitim.py     proxy adresi ve jetonu (derlemede gizli anahtarlardan yazılır; depoda boş)
 cagri/net.py         hafif HTTP katmanı (bağlantı havuzu, sistem proxy)
 cagri/guvenlik.py    yetkili şifresi ve anahtar şifreleme
 cagri/filler.py      çağrı ekranını bulma, doldurma, Çağrı No okuma

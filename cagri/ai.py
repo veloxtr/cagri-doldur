@@ -5,14 +5,13 @@ import re
 import threading
 import time
 
-from . import gizlilik, net
+from . import dagitim, gizlilik, net
 from .prompt import FIELDS, system_prompt
 
 GEMINI_MODELLERI = {
     "hizli": "gemini-flash-lite-latest",
     "dengeli": "gemini-flash-latest",
 }
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 # Düşünme süresini en aza indirmek için denenecek ayarlar (model hangisini kabul ederse).
 _DUSUNME_SECENEKLERI = [{"thinkingLevel": "minimal"}, {"thinkingBudget": 0}, None]
@@ -46,31 +45,6 @@ def _json_cikar(text):
     return {key: str(data.get(key, "")).strip() for key, _ in FIELDS}
 
 
-_ETIKETLER = {label.lower(): key for key, label in FIELDS}
-
-
-def metinden_alanlar(text):
-    """Panodaki metni alanlara ayırır: JSON ya da 'Etiket: metin' satırları."""
-    vals = _json_cikar(text)
-    if vals and vals.get("cozum"):
-        return vals
-    vals = {k: "" for k, _ in FIELDS}
-    son = None
-    for satir in (text or "").replace("**", "").splitlines():
-        satir = satir.strip()
-        if not satir or satir.startswith("```"):
-            continue
-        bulundu = False
-        for etiket, key in _ETIKETLER.items():
-            if satir.lower().startswith(etiket + ":"):
-                vals[key] = satir.split(":", 1)[1].strip()
-                son, bulundu = key, True
-                break
-        if not bulundu and son:
-            vals[son] = (vals[son] + " " + satir).strip()
-    return vals if vals.get("cozum") else None
-
-
 # ---------------------------------------------------------------- servisler
 def _hata_metni(metin):
     try:
@@ -84,8 +58,10 @@ def gemini_modeli(cfg):
 
 
 def _gemini(cfg, notu):
-    if not cfg.get("gemini_key"):
-        raise AIHatasi("Gemini anahtarı girilmemiş. Ayarlar'dan ekle.")
+    url = dagitim.proxy_url()
+    jeton = dagitim.proxy_token()
+    if not (url and jeton):
+        raise AIHatasi("Yapay zekâ bağlantısı bu sürümde ayarlı değil. Lütfen uygulamayı güncelleyin.")
     model = gemini_modeli(cfg)
     govde = {
         "system_instruction": {"parts": [{"text": system_prompt(cfg)}]},
@@ -98,33 +74,19 @@ def _gemini(cfg, notu):
         if _DUSUNME_SECENEKLERI[i]:
             gen["thinkingConfig"] = _DUSUNME_SECENEKLERI[i]
         govde["generationConfig"] = gen
-        durum, metin = net.istek("POST", GEMINI_URL.format(model=model),
-                                 headers={"x-goog-api-key": cfg["gemini_key"]}, govde=govde, timeout=60)
+        durum, metin = net.istek("POST", url, headers={"X-App-Token": jeton},
+                                 govde={"model": model, "body": govde}, timeout=60)
         if durum == 400 and "think" in metin.lower() and i < len(_DUSUNME_SECENEKLERI) - 1:
             continue  # bu model bu düşünme ayarını kabul etmiyor, sıradakini dene
+        if durum == 401:
+            raise AIHatasi("Yapay zekâ sunucusu bu uygulamayı tanımadı. Lütfen uygulamayı güncelleyin.")
         if durum != 200:
-            raise AIHatasi(f"Gemini hatası ({durum}): {_hata_metni(metin)[:300]}")
+            raise AIHatasi(f"Yapay zekâ hatası ({durum}): {_hata_metni(metin)[:300]}")
         with _kilit:
             _dusunme_secimi[model] = i
         parts = (json.loads(metin).get("candidates") or [{}])[0].get("content", {}).get("parts", [])
         return "".join(p.get("text", "") for p in parts if not p.get("thought"))
-    raise AIHatasi("Gemini yanıt vermedi.")
-
-
-def _anthropic(cfg, notu):
-    if not cfg.get("api_key"):
-        raise AIHatasi("Claude API anahtarı girilmemiş. Ayarlar'dan ekle.")
-    durum, metin = net.istek(
-        "POST", "https://api.anthropic.com/v1/messages",
-        headers={"x-api-key": cfg["api_key"], "anthropic-version": "2023-06-01"},
-        govde={"model": cfg["model"], "max_tokens": 2000,
-              "system": [{"type": "text", "text": system_prompt(cfg), "cache_control": {"type": "ephemeral"}}],
-              "messages": [{"role": "user", "content": "Not:\n" + notu}]},
-        timeout=60,
-    )
-    if durum != 200:
-        raise AIHatasi(f"Claude hatası ({durum}): {_hata_metni(metin)[:300]}")
-    return "".join(b.get("text", "") for b in json.loads(metin).get("content", []) if b.get("type") == "text")
+    raise AIHatasi("Yapay zekâ yanıt vermedi.")
 
 
 def yorumla(cfg, notu, ek_bilgi=None):
@@ -137,7 +99,7 @@ def yorumla(cfg, notu, ek_bilgi=None):
     if ek_bilgi:
         notu = notu.rstrip() + "\n\nEk bilgi:\n" + "\n".join(f"- {s}" for s in ek_bilgi)
     try:
-        text = _anthropic(cfg, notu) if cfg.get("saglayici") == "anthropic" else _gemini(cfg, notu)
+        text = _gemini(cfg, notu)
     except TimeoutError:
         raise AIHatasi("AI çok geç cevap verdi, tekrar dene.")
     except OSError as e:
@@ -150,10 +112,15 @@ def yorumla(cfg, notu, ek_bilgi=None):
 
 def isit(cfg):
     """Uygulama açılırken bağlantıyı önceden kurar; ilk istek daha hızlı gider."""
-    if cfg.get("saglayici") == "gemini":
-        net.isit("generativelanguage.googleapis.com")
-    elif cfg.get("saglayici") == "anthropic":
-        net.isit("api.anthropic.com")
+    url = dagitim.proxy_url()
+    if url:
+        try:
+            from urllib.parse import urlparse
+            host = urlparse(url).hostname
+            if host:
+                net.isit(host)
+        except Exception:
+            pass
 
 
 def baglanti_testi(cfg):
